@@ -1129,6 +1129,7 @@
 </div>
 
 <script>
+  // --- navigation ---
   const tabs = document.querySelectorAll('.tab');
   const pages = document.querySelectorAll('.page');
   tabs.forEach(tab => {
@@ -1138,6 +1139,78 @@
       tab.classList.add('active');
       document.getElementById(tab.dataset.target).classList.add('active');
       window.scrollTo(0,0);
+    });
+  });
+
+  // --- noms lisibles par personne ---
+  const personNames = {
+    gerardo: 'Gerardo Marcotti',
+    carole:  'Carole Laffont',
+    daniele: 'Daniele V.',
+    miriam:  'Miriam Sorolla',
+    emilie:  'Emilie Borel'
+  };
+
+  // --- toast notification ---
+  function showToast(msg) {
+    let t = document.getElementById('notif-toast');
+    if (!t) {
+      t = document.createElement('div');
+      t.id = 'notif-toast';
+      t.style.cssText = `
+        position:fixed; bottom:28px; right:28px; background:#0e2235; color:#f3efe6;
+        font-family:'Roboto Mono',monospace; font-size:13px; padding:14px 20px;
+        border-radius:4px; border-left:4px solid #4f7a52; z-index:9999;
+        box-shadow:0 4px 20px rgba(0,0,0,.25); max-width:320px; line-height:1.5;
+        transition:opacity .3s;
+      `;
+      document.body.appendChild(t);
+    }
+    t.textContent = msg;
+    t.style.opacity = '1';
+    clearTimeout(t._timer);
+    t._timer = setTimeout(() => { t.style.opacity = '0'; }, 4000);
+  }
+
+  // --- envoi notif Web3Forms ---
+  async function sendNotif(person, actionText, checked) {
+    const nom = personNames[person] || person;
+    const statut = checked ? '✅ COCHÉE' : '↩️ DÉCOCHÉE';
+    const heure = new Date().toLocaleString('fr-FR', {timeZone:'Indian/Antananarivo'});
+
+    try {
+      await fetch('https://api.web3forms.com/submit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          access_key: '10698bca-b2e2-4141-82f8-48e92b626241',
+          subject: `[Daylindo LinkedIn] Action ${statut} — ${nom}`,
+          from_name: 'Audit LinkedIn Daylindo',
+          message: `Profil : ${nom}\nStatut : ${statut}\nAction : ${actionText}\nHeure : ${heure}`
+        })
+      });
+      showToast(checked
+        ? `✅ Notif envoyée — ${nom}`
+        : `↩️ Action décochée — ${nom}`
+      );
+    } catch(e) {
+      showToast('⚠️ Erreur envoi notif');
+    }
+  }
+
+  // --- écoute chaque checkbox ---
+  document.querySelectorAll('.todo-list input[type="checkbox"]').forEach(cb => {
+    cb.addEventListener('change', function() {
+      const li = this.closest('li');
+      const label = li.querySelector('label');
+      const actionText = label.textContent.trim();
+      const person = this.closest('ul').dataset.person;
+
+      // style visuel
+      if (this.checked) li.classList.add('done');
+      else li.classList.remove('done');
+
+      sendNotif(person, actionText, this.checked);
     });
   });
 </script>
