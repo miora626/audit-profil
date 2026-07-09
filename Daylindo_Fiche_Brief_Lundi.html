@@ -83,35 +83,47 @@ function coherence(r){
 }
 
 function selectHtml(id, field, options, current){
-  return `<select onchange="update('${id}','${field}',this.value)">` +
+  return `<select onchange="onField('${id}','${field}',this.value)">` +
     options.map(o => `<option value="${o}" ${o===current?'selected':''}>${o===''?'—':o}</option>`).join('') +
     `</select>`;
 }
 
+// Full structural render — used only on init / add / delete (never on keystrokes)
 function render(){
   const tbody = document.getElementById('rows');
   tbody.innerHTML = rows.map(r => {
-    const coh = coherence(r);
     return `<tr>
-      <td class="first"><input class="name" value="${esc(r.titre)}" placeholder="Titre / sujet" oninput="update('${r.id}','titre',this.value)"></td>
-      <td><input class="name" value="${esc(r.question)}" placeholder="Verbatim entendu" oninput="update('${r.id}','question',this.value)"></td>
+      <td class="first"><input class="name" value="${esc(r.titre)}" placeholder="Titre / sujet" oninput="onField('${r.id}','titre',this.value)"></td>
+      <td><input class="name" value="${esc(r.question)}" placeholder="Verbatim entendu" oninput="onField('${r.id}','question',this.value)"></td>
       <td>${selectHtml(r.id, 'qui', QUI_OPTIONS, r.qui)}</td>
-      <td><input value="${esc(r.nb)}" oninput="update('${r.id}','nb',this.value)"></td>
+      <td><input value="${esc(r.nb)}" oninput="onField('${r.id}','nb',this.value)"></td>
       <td>${selectHtml(r.id, 'persona', PERSONA_OPTIONS, r.persona)}</td>
       <td>${selectHtml(r.id, 'etape', ETAPE_OPTIONS, r.etape)}</td>
       <td>${selectHtml(r.id, 'cta', CTA_OPTIONS, r.cta)}</td>
-      <td>${coh ? `<span class="badge ${coh[0]}">${coh[1]}</span>` : '<span style="color:var(--muted);font-size:12px">—</span>'}</td>
-      <td><input value="${esc(r.objectif)}" placeholder="ex. 3 RDV" oninput="update('${r.id}','objectif',this.value)"></td>
+      <td id="coh-${r.id}"></td>
+      <td><input value="${esc(r.objectif)}" placeholder="ex. 3 RDV" oninput="onField('${r.id}','objectif',this.value)"></td>
       <td>${selectHtml(r.id, 'statut', STATUT_OPTIONS, r.statut)}</td>
       <td><button class="del-btn" onclick="delRow('${r.id}')" aria-label="Supprimer">✕</button></td>
     </tr>`;
   }).join('');
+  rows.forEach(r => updateCoherence(r.id));
   save();
 }
 
-function update(id, field, value){
+// Lightweight update — touches only the coherence badge for one row, never the inputs themselves
+function updateCoherence(id){
+  const r = rows.find(r => r.id === id);
+  if(!r) return;
+  const cell = document.getElementById('coh-' + id);
+  if(!cell) return;
+  const coh = coherence(r);
+  cell.innerHTML = coh ? `<span class="badge ${coh[0]}">${coh[1]}</span>` : '<span style="color:var(--muted);font-size:12px">—</span>';
+}
+
+// Called on every keystroke / select change — updates state + badge only, never re-renders inputs
+function onField(id, field, value){
   const row = rows.find(r => r.id === id);
-  if(row){ row[field] = value; render(); }
+  if(row){ row[field] = value; updateCoherence(id); save(); }
 }
 function addRow(){ rows.push(emptyRow()); render(); }
 function delRow(id){ rows = rows.filter(r => r.id !== id); render(); }
