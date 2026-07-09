@@ -191,6 +191,7 @@ function buildApp(){
   `).join('');
 }
 
+// Full structural render — used only on init / add / delete (never on keystrokes)
 function renderSection(sectionId){
   const section = SECTIONS.find(s => s.id === sectionId);
   const rows = state[sectionId];
@@ -200,25 +201,35 @@ function renderSection(sectionId){
       const cls = fi === 0 ? 'first' : '';
       if(f.type === 'select'){
         const opts = f.options.map(o => `<option value="${o}" ${o===r[f.key]?'selected':''}>${o===''?'—':o}</option>`).join('');
-        return `<td class="${cls}"><select onchange="updRow('${sectionId}','${r.id}','${f.key}',this.value)">${opts}</select></td>`;
+        return `<td class="${cls}"><select onchange="onField('${sectionId}','${r.id}','${f.key}',this.value)">${opts}</select></td>`;
       }
       const inputClass = fi === 0 ? 'name' : '';
       const style = f.small ? 'style="text-align:left;font-size:11px"' : '';
-      return `<td class="${cls}"><input class="${inputClass}" ${style} value="${esc(r[f.key])}" placeholder="${f.placeholder||''}" oninput="updRow('${sectionId}','${r.id}','${f.key}',this.value)"></td>`;
+      return `<td class="${cls}"><input class="${inputClass}" ${style} value="${esc(r[f.key])}" placeholder="${f.placeholder||''}" oninput="onField('${sectionId}','${r.id}','${f.key}',this.value)"></td>`;
     }).join('');
-    let badgeCell = '';
-    if(section.badge){
-      const res = section.badge(r);
-      badgeCell = `<td>${res ? `<span class="badge ${res[0]}">${res[1]}</span>` : '<span style="color:var(--muted);font-size:12px">—</span>'}</td>`;
-    }
+    const badgeCell = section.badge ? `<td id="badge-${sectionId}-${r.id}"></td>` : '';
     return `<tr>${cells}${badgeCell}<td><button class="del-btn" onclick="delRow('${sectionId}','${r.id}')" aria-label="Supprimer">✕</button></td></tr>`;
   }).join('');
+  if(section.badge) rows.forEach(r => updateBadge(sectionId, r.id));
   save(sectionId);
 }
 
-function updRow(sectionId, rowId, field, value){
+// Lightweight update — touches only the badge cell for one row, never the inputs themselves
+function updateBadge(sectionId, rowId){
+  const section = SECTIONS.find(s => s.id === sectionId);
+  if(!section.badge) return;
   const row = state[sectionId].find(r => r.id === rowId);
-  if(row){ row[field] = value; renderSection(sectionId); }
+  if(!row) return;
+  const cell = document.getElementById(`badge-${sectionId}-${rowId}`);
+  if(!cell) return;
+  const res = section.badge(row);
+  cell.innerHTML = res ? `<span class="badge ${res[0]}">${res[1]}</span>` : '<span style="color:var(--muted);font-size:12px">—</span>';
+}
+
+// Called on every keystroke / select change — updates state + badge only, never re-renders inputs
+function onField(sectionId, rowId, field, value){
+  const row = state[sectionId].find(r => r.id === rowId);
+  if(row){ row[field] = value; updateBadge(sectionId, rowId); save(sectionId); }
 }
 function addRow(sectionId){
   const section = SECTIONS.find(s => s.id === sectionId);
