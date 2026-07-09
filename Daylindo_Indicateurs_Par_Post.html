@@ -95,27 +95,37 @@ function statusLabel(s){
   return '—';
 }
 
+// Full structural render — used only on init / add / delete (never on keystrokes)
 function render(){
   const tbody = document.getElementById('rows');
   tbody.innerHTML = rows.map(r => {
-    const s = statusFor(r);
-    const badgeClass = s || '';
     return `<tr>
-      <td class="first"><input class="post-name" value="${esc(r.post)}" placeholder="Titre du post" oninput="update('${r.id}','post',this.value)"></td>
-      <td><input value="${esc(r.tObj)}" oninput="update('${r.id}','tObj',this.value)"></td>
-      <td><input value="${esc(r.tReal)}" oninput="update('${r.id}','tReal',this.value)"></td>
-      <td class="grp"><input value="${esc(r.dObj)}" oninput="update('${r.id}','dObj',this.value)"></td>
-      <td><input value="${esc(r.dReal)}" oninput="update('${r.id}','dReal',this.value)"></td>
-      <td class="grp"><input value="${esc(r.rObj)}" oninput="update('${r.id}','rObj',this.value)"></td>
-      <td><input value="${esc(r.rReal)}" oninput="update('${r.id}','rReal',this.value)"></td>
-      <td class="grp">${s ? `<span class="badge ${badgeClass}">${statusLabel(s)}</span>` : '<span style="color:var(--muted);font-size:12px">—</span>'}</td>
+      <td class="first"><input class="post-name" value="${esc(r.post)}" placeholder="Titre du post" oninput="onField('${r.id}','post',this.value)"></td>
+      <td><input value="${esc(r.tObj)}" oninput="onField('${r.id}','tObj',this.value)"></td>
+      <td><input value="${esc(r.tReal)}" oninput="onField('${r.id}','tReal',this.value)"></td>
+      <td class="grp"><input value="${esc(r.dObj)}" oninput="onField('${r.id}','dObj',this.value)"></td>
+      <td><input value="${esc(r.dReal)}" oninput="onField('${r.id}','dReal',this.value)"></td>
+      <td class="grp"><input value="${esc(r.rObj)}" oninput="onField('${r.id}','rObj',this.value)"></td>
+      <td><input value="${esc(r.rReal)}" oninput="onField('${r.id}','rReal',this.value)"></td>
+      <td class="grp" id="badge-${r.id}"></td>
       <td><button class="del-btn" onclick="removeRow('${r.id}')" aria-label="Supprimer">✕</button></td>
     </tr>`;
   }).join('');
+  rows.forEach(r => updateRowBadge(r.id));
   renderSummary();
 }
 
 function esc(v){ return (v === null || v === undefined) ? '' : String(v).replace(/"/g,'&quot;'); }
+
+// Lightweight update — touches only the badge cell for one row, never the inputs themselves
+function updateRowBadge(id){
+  const r = rows.find(r => r.id === id);
+  if(!r) return;
+  const cell = document.getElementById('badge-' + id);
+  if(!cell) return;
+  const s = statusFor(r);
+  cell.innerHTML = s ? `<span class="badge ${s}">${statusLabel(s)}</span>` : '<span style="color:var(--muted);font-size:12px">—</span>';
+}
 
 function sumField(field){
   return rows.reduce((acc,r) => acc + (parseFloat(r[field]) || 0), 0);
@@ -140,9 +150,9 @@ function renderSummary(){
   }).join('');
 }
 
-function update(id, field, value){
+function onField(id, field, value){
   const row = rows.find(r => r.id === id);
-  if(row){ row[field] = value; save(); render(); }
+  if(row){ row[field] = value; updateRowBadge(id); renderSummary(); save(); }
 }
 
 function addRow(){
