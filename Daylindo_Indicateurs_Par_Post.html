@@ -1,0 +1,184 @@
+<style>
+  :root{
+    --navy:#1F3864; --gold:#B08D3E; --bg:#FFFFFF; --card:#F7F7F5; --border:#E1DFD8;
+    --text:#262626; --muted:#6B6B66; --green:#0F6E56; --greenBg:#E1F5EE;
+    --red:#9C0006; --redBg:#FFEBEB; --amber:#854F0B; --amberBg:#FAEEDA;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{ --bg:#1B1B19; --card:#242422; --border:#3A3A36; --text:#EDEDE8; --muted:#A8A69E;
+      --greenBg:#0C2B24; --redBg:#3A1414; --amberBg:#3A2A0E; --amber:#F2C879; }
+  }
+  *{box-sizing:border-box}
+  .wrap{font-family:Arial,Helvetica,sans-serif;color:var(--text);max-width:980px;margin:0 auto;padding:8px 0 24px}
+  h2{font-size:19px;font-weight:700;color:var(--navy);margin:0 0 4px}
+  @media (prefers-color-scheme: dark){ h2{color:#8FB4E8} }
+  .sub{font-size:13px;color:var(--muted);margin:0 0 16px}
+  .summary{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:18px}
+  .sum-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px 14px;text-align:center}
+  .sum-label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.03em;font-weight:700}
+  .sum-val{font-size:22px;font-weight:700;color:var(--navy);margin-top:2px}
+  @media (prefers-color-scheme: dark){ .sum-val{color:#8FB4E8} }
+  .sum-sub{font-size:11px;color:var(--muted);margin-top:2px}
+  table{width:100%;border-collapse:collapse;font-size:13px;background:var(--card);border:1px solid var(--border);border-radius:10px;overflow:hidden}
+  th{background:var(--navy);color:#fff;font-size:11px;text-transform:uppercase;letter-spacing:.02em;padding:9px 6px;text-align:center;font-weight:700}
+  th.first{text-align:left;padding-left:12px}
+  td{padding:6px;border-bottom:1px solid var(--border);text-align:center;vertical-align:middle}
+  td.first{text-align:left;padding-left:12px}
+  input{width:100%;border:1px solid var(--border);border-radius:5px;background:var(--bg);color:var(--text);padding:5px 6px;font-size:13px;text-align:center;font-family:inherit}
+  input.post-name{text-align:left}
+  input:focus{outline:2px solid var(--navy);outline-offset:1px}
+  .grp{border-left:2px solid var(--border)}
+  .badge{font-size:11px;font-weight:700;padding:4px 10px;border-radius:20px;white-space:nowrap;display:inline-block}
+  .ok{background:var(--greenBg);color:var(--green)}
+  .warn{background:var(--amberBg);color:var(--amber)}
+  .ko{background:var(--redBg);color:var(--red)}
+  .del-btn{background:none;border:none;color:var(--red);font-size:16px;cursor:pointer;padding:0;line-height:1}
+  .actions{display:flex;gap:10px;margin-top:14px}
+  button.add{background:var(--navy);color:#fff;border:none;border-radius:6px;padding:9px 16px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit}
+  button.add:hover{opacity:.9}
+  .saved-note{font-size:11px;color:var(--muted);margin-top:8px;text-align:right;min-height:14px}
+</style>
+
+<div class="wrap">
+  <h2>Indicateurs par post — objectifs vs atteints</h2>
+  <p class="sub">À mettre à jour chaque semaine. Ajoute un post, renseigne les objectifs une fois, complète les résultats atteints au fil de l'eau.</p>
+
+  <div class="summary" id="summary"></div>
+
+  <table>
+    <thead>
+      <tr>
+        <th class="first" rowspan="2">Post</th>
+        <th colspan="2">Trafic qualifié</th>
+        <th colspan="2" class="grp">Demandes entrantes</th>
+        <th colspan="2" class="grp">RDV générés</th>
+        <th rowspan="2" class="grp">Statut</th>
+        <th rowspan="2"></th>
+      </tr>
+      <tr>
+        <th>Objectif</th><th>Atteint</th>
+        <th class="grp">Objectif</th><th>Atteint</th>
+        <th class="grp">Objectif</th><th>Atteint</th>
+      </tr>
+    </thead>
+    <tbody id="rows"></tbody>
+  </table>
+
+  <div class="actions">
+    <button class="add" onclick="addRow()">+ Ajouter un post</button>
+  </div>
+  <div class="saved-note" id="saved-note"></div>
+</div>
+
+<script>
+let rows = [];
+
+function emptyRow(){
+  return { id: 'r' + Date.now() + Math.random().toString(36).slice(2,6),
+    post:'', tObj:'', tReal:'', dObj:'', dReal:'', rObj:'', rReal:'' };
+}
+
+function statusFor(row){
+  const pairs = [[row.tObj,row.tReal],[row.dObj,row.dReal],[row.rObj,row.rReal]];
+  const withObj = pairs.filter(p => p[0] !== '' && p[0] !== null && !isNaN(parseFloat(p[0])) && parseFloat(p[0]) > 0);
+  if(withObj.length === 0) return null;
+  const metCount = withObj.filter(p => (parseFloat(p[1]) || 0) >= parseFloat(p[0])).length;
+  if(metCount === withObj.length) return 'ok';
+  if(metCount === 0) return 'ko';
+  return 'warn';
+}
+
+function statusLabel(s){
+  if(s === 'ok') return 'Atteint';
+  if(s === 'ko') return 'Non atteint';
+  if(s === 'warn') return 'En cours';
+  return '—';
+}
+
+function render(){
+  const tbody = document.getElementById('rows');
+  tbody.innerHTML = rows.map(r => {
+    const s = statusFor(r);
+    const badgeClass = s || '';
+    return `<tr>
+      <td class="first"><input class="post-name" value="${esc(r.post)}" placeholder="Titre du post" oninput="update('${r.id}','post',this.value)"></td>
+      <td><input value="${esc(r.tObj)}" oninput="update('${r.id}','tObj',this.value)"></td>
+      <td><input value="${esc(r.tReal)}" oninput="update('${r.id}','tReal',this.value)"></td>
+      <td class="grp"><input value="${esc(r.dObj)}" oninput="update('${r.id}','dObj',this.value)"></td>
+      <td><input value="${esc(r.dReal)}" oninput="update('${r.id}','dReal',this.value)"></td>
+      <td class="grp"><input value="${esc(r.rObj)}" oninput="update('${r.id}','rObj',this.value)"></td>
+      <td><input value="${esc(r.rReal)}" oninput="update('${r.id}','rReal',this.value)"></td>
+      <td class="grp">${s ? `<span class="badge ${badgeClass}">${statusLabel(s)}</span>` : '<span style="color:var(--muted);font-size:12px">—</span>'}</td>
+      <td><button class="del-btn" onclick="removeRow('${r.id}')" aria-label="Supprimer">✕</button></td>
+    </tr>`;
+  }).join('');
+  renderSummary();
+}
+
+function esc(v){ return (v === null || v === undefined) ? '' : String(v).replace(/"/g,'&quot;'); }
+
+function sumField(field){
+  return rows.reduce((acc,r) => acc + (parseFloat(r[field]) || 0), 0);
+}
+
+function renderSummary(){
+  const tObj = sumField('tObj'), tReal = sumField('tReal');
+  const dObj = sumField('dObj'), dReal = sumField('dReal');
+  const rObj = sumField('rObj'), rReal = sumField('rReal');
+  const cards = [
+    ['Trafic qualifié', tReal, tObj],
+    ['Demandes entrantes', dReal, dObj],
+    ['RDV générés', rReal, rObj],
+  ];
+  document.getElementById('summary').innerHTML = cards.map(([label, real, obj]) => {
+    const pct = obj > 0 ? Math.round((real/obj)*100) : null;
+    return `<div class="sum-card">
+      <div class="sum-label">${label}</div>
+      <div class="sum-val">${real} <span style="font-size:13px;color:var(--muted);font-weight:400">/ ${obj}</span></div>
+      <div class="sum-sub">${pct !== null ? pct + "% de l'objectif" : "objectif non renseigné"}</div>
+    </div>`;
+  }).join('');
+}
+
+function update(id, field, value){
+  const row = rows.find(r => r.id === id);
+  if(row){ row[field] = value; save(); render(); }
+}
+
+function addRow(){
+  rows.push(emptyRow());
+  save();
+  render();
+}
+
+function removeRow(id){
+  rows = rows.filter(r => r.id !== id);
+  save();
+  render();
+}
+
+let saveTimeout;
+function save(){
+  clearTimeout(saveTimeout);
+  saveTimeout = setTimeout(async () => {
+    try{
+      await window.storage.set('kpi-par-post', JSON.stringify(rows), false);
+      const note = document.getElementById('saved-note');
+      note.textContent = 'Enregistré ' + new Date().toLocaleTimeString('fr-FR', {hour:'2-digit', minute:'2-digit'});
+    }catch(e){ console.error('Erreur sauvegarde', e); }
+  }, 400);
+}
+
+async function init(){
+  try{
+    const r = await window.storage.get('kpi-par-post', false);
+    rows = JSON.parse(r.value);
+    if(!Array.isArray(rows) || rows.length === 0) rows = [emptyRow(), emptyRow(), emptyRow()];
+  }catch(e){
+    rows = [emptyRow(), emptyRow(), emptyRow()];
+  }
+  render();
+}
+
+init();
+</script>
