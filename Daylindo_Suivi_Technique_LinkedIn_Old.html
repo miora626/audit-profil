@@ -1,0 +1,261 @@
+<style>
+  :root{
+    --navy:#1F3864; --gold:#B08D3E; --bg:#FFFFFF; --card:#F7F7F5; --border:#E1DFD8;
+    --text:#262626; --muted:#6B6B66; --green:#0F6E56; --greenBg:#E1F5EE;
+    --red:#9C0006; --redBg:#FFEBEB; --amber:#854F0B; --amberBg:#FAEEDA;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{ --bg:#1B1B19; --card:#242422; --border:#3A3A36; --text:#EDEDE8; --muted:#A8A69E;
+      --greenBg:#0C2B24; --redBg:#3A1414; --amberBg:#3A2A0E; --amber:#F2C879; }
+  }
+  *{box-sizing:border-box}
+  .wrap{font-family:Arial,Helvetica,sans-serif;color:var(--text);max-width:1050px;margin:0 auto;padding:8px 0 24px}
+  h2{font-size:19px;font-weight:700;color:var(--navy);margin:28px 0 4px}
+  h2:first-child{margin-top:0}
+  @media (prefers-color-scheme: dark){ h2{color:#8FB4E8} }
+  .sub{font-size:13px;color:var(--muted);margin:0 0 12px}
+  .instr{background:var(--amberBg);color:var(--amber);border-radius:8px;padding:10px 14px;font-size:12.5px;margin-bottom:12px;line-height:1.5}
+  .instr b{font-weight:700}
+  .instr code{background:rgba(0,0,0,.08);padding:1px 5px;border-radius:4px;font-size:11.5px}
+  table{width:100%;border-collapse:collapse;font-size:13px;background:var(--card);border:1px solid var(--border);border-radius:10px;overflow:hidden}
+  th{background:var(--navy);color:#fff;font-size:11px;text-transform:uppercase;letter-spacing:.02em;padding:9px 6px;text-align:center;font-weight:700}
+  th.first{text-align:left;padding-left:12px}
+  td{padding:6px;border-bottom:1px solid var(--border);text-align:center;vertical-align:middle}
+  td.first{text-align:left;padding-left:12px}
+  input,select{width:100%;border:1px solid var(--border);border-radius:5px;background:var(--bg);color:var(--text);padding:5px 6px;font-size:13px;text-align:center;font-family:inherit}
+  input.name{text-align:left}
+  input:focus,select:focus{outline:2px solid var(--navy);outline-offset:1px}
+  .badge{font-size:11px;font-weight:700;padding:4px 10px;border-radius:20px;white-space:nowrap;display:inline-block}
+  .ok{background:var(--greenBg);color:var(--green)}
+  .warn{background:var(--amberBg);color:var(--amber)}
+  .ko{background:var(--redBg);color:var(--red)}
+  .del-btn{background:none;border:none;color:var(--red);font-size:16px;cursor:pointer;padding:0;line-height:1}
+  .actions{display:flex;gap:10px;margin-top:12px;margin-bottom:4px}
+  button.add{background:var(--navy);color:#fff;border:none;border-radius:6px;padding:9px 16px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit}
+  button.add:hover{opacity:.9}
+  .saved-note{font-size:11px;color:var(--muted);margin-top:6px;text-align:right;min-height:14px}
+  hr.sep{border:none;border-top:1px solid var(--border);margin:26px 0 0}
+</style>
+
+<div class="wrap" id="app"></div>
+
+<script>
+function signalLi(r){
+  const clics = parseFloat(r.clics) || 0;
+  const eng = (parseFloat(r.likes)||0) + (parseFloat(r.comments)||0) + (parseFloat(r.shares)||0);
+  if(clics > 0) return ['ok', 'Accroche confirmée'];
+  if(eng > 0) return ['warn', 'Intérêt sans clic — revoir lien/CTA'];
+  if(!r.post && !r.likes && !r.comments && !r.shares && !r.clics) return null;
+  return ['ko', "Aucune réaction — revoir l'angle"];
+}
+function signalTagConfirme(r){
+  if(r.tag === 'Oui') return ['ok', 'Confirmé'];
+  if(r.tag === 'Non') return ['ko', 'À corriger'];
+  return null;
+}
+function signalLienOk(r){
+  if(r.fonctionne === 'Oui') return ['ok', 'OK'];
+  if(r.fonctionne === 'Non') return ['ko', 'À corriger'];
+  return null;
+}
+
+const SECTIONS = [
+  {
+    id: 'tech',
+    storageKey: 'diagnostic-technique-old',
+    title: 'Diagnostic technique — par article',
+    sub: 'À faire à J+10 pour chaque article (10 minutes). Suivi : Old.',
+    instrs: [
+      `<b>Indexation Google :</b> tape <code>site:daylindo.com</code> + un mot du titre dans Google. Rien à J+10 = normal, l'indexation peut prendre plusieurs semaines. Recontrôler à J+30.<br>
+       <b>Lien :</b> clique le lien depuis le post LinkedIn et vérifie qu'il arrive bien sur l'article.<br>
+       <b>Mesure :</b> vérifie que Google Analytics (ou équivalent) capte des visites sur cette page précise — sinon un "zéro" peut juste vouloir dire qu'on ne regarde pas au bon endroit.`
+    ],
+    addLabel: '+ Ajouter un article',
+    fields: [
+      {key:'article', label:'Article', type:'text', first:true, placeholder:"Titre de l'article"},
+      {key:'lien', label:'Lien fonctionne', type:'select', options:['','Oui','Non']},
+      {key:'indexe', label:'Indexé Google', type:'select', options:['','Oui','Non','Pas encore']},
+      {key:'mesure', label:'Mesure active (GA)', type:'select', options:['','Oui','Non']},
+      {key:'date', label:'Date du contrôle', type:'text', placeholder:'jj/mm/aaaa'},
+      {key:'commentaire', label:'Commentaire', type:'text', placeholder:'—'},
+    ],
+    badge: null,
+  },
+  {
+    id: 'li',
+    storageKey: 'engagement-linkedin-old',
+    title: 'Engagement LinkedIn — par post',
+    sub: 'À mettre à jour à chaque publication de post. Suivi : Old.',
+    instrs: [
+      `Renseigne les chiffres visibles sur LinkedIn (likes, commentaires, partages) et les clics vers le site (LinkedIn Analytics natif, ou Google Analytics si le lien est tagué). Le signal se calcule automatiquement pour voir si le post <b>accroche</b> ou non.`,
+      `<b>Conseil — la méthode la plus fiable pour les clics :</b> avant de publier un post, construis le lien avec <code>ga-dev-tools.google/campaign-url-builder</code> :
+       <code>utm_source=linkedin</code>, <code>utm_medium=social</code>, <code>utm_campaign=</code>nom de l'article. Utilise <b>toujours ce lien tagué</b> dans le post, jamais le lien brut — c'est ce qui permet de retrouver le trafic exact de ce post dans Google Analytics (Rapports → Acquisition → Acquisition de trafic → Session source/support). Colle le lien utilisé dans la colonne "Lien UTM" ci-dessous pour garder une trace.`
+    ],
+    addLabel: '+ Ajouter un post',
+    fields: [
+      {key:'post', label:'Post (article lié)', type:'text', first:true, placeholder:'Ex. Post 1 - AFEST OPCO'},
+      {key:'date', label:'Date', type:'text', placeholder:'jj/mm/aaaa'},
+      {key:'likes', label:'Likes', type:'text'},
+      {key:'comments', label:'Commentaires', type:'text'},
+      {key:'shares', label:'Partages', type:'text'},
+      {key:'clics', label:'Clics vers le site', type:'text'},
+      {key:'utm', label:'Lien UTM utilisé', type:'text', small:true, placeholder:'?utm_source=linkedin...'},
+    ],
+    badge: signalLi,
+  },
+  {
+    id: 'pipedrive',
+    storageKey: 'attribution-pipedrive-old',
+    title: 'Attribution Pipedrive — RDV ↔ article',
+    sub: "À mettre à jour dès qu'un RDV ou une opportunité est identifiable comme venant du contenu. Suivi : Old.",
+    instrs: [
+      `Dans Pipedrive, ajoute un champ ou un tag <b>« Source = Contenu éditorial »</b> sur le deal ou le contact, et note ci-dessous l'article qui a probablement généré ce RDV (d'après ce que le prospect a mentionné, ou le lien cliqué s'il est tagué). Le but : pouvoir prouver, pas juste supposer, qu'un RDV vient du contenu.`
+    ],
+    addLabel: '+ Ajouter un RDV',
+    fields: [
+      {key:'article', label:'Article source', type:'text', first:true, placeholder:"Titre de l'article"},
+      {key:'deal', label:'RDV / Deal Pipedrive', type:'text', placeholder:'Nom du contact ou ID deal'},
+      {key:'date', label:'Date RDV', type:'text', placeholder:'jj/mm/aaaa'},
+      {key:'tag', label:'Tag confirmé', type:'select', options:['','Oui','Non']},
+      {key:'commentaire', label:'Commentaire', type:'text', placeholder:'—'},
+    ],
+    badge: signalTagConfirme,
+  },
+  {
+    id: 'gsc',
+    storageKey: 'search-console-old',
+    title: 'Google Search Console — par article',
+    sub: 'À mettre à jour à J+30 puis chaque mois. Suivi : Old.',
+    instrs: [
+      `Dans Search Console : Performance → onglet Pages, cherche l'URL de l'article pour Impressions et Clics cumulés. Clique sur la ligne puis onglet Requêtes pour voir le mot-clé principal et sa Position moyenne. Ça montre la visibilité dans Google même avant le clic — complète Google Analytics, qui ne voit que ceux qui ont déjà cliqué.`
+    ],
+    addLabel: '+ Ajouter un article',
+    fields: [
+      {key:'article', label:'Article', type:'text', first:true, placeholder:"Titre de l'article"},
+      {key:'motcle', label:'Mot-clé principal', type:'text', placeholder:'ex. afest preuve opco'},
+      {key:'impressions', label:'Impressions cumulées', type:'text'},
+      {key:'clics', label:'Clics cumulés', type:'text'},
+      {key:'position', label:'Position moyenne', type:'text', placeholder:'ex. 8.2'},
+      {key:'date', label:'Date du contrôle', type:'text', placeholder:'jj/mm/aaaa'},
+    ],
+    badge: null,
+  },
+  {
+    id: 'links',
+    storageKey: 'liens-casses-old',
+    title: 'Liens internes — vérification du maillage',
+    sub: 'Contrôle mensuel des liens entre articles déjà publiés. Suivi : Old.',
+    instrs: [
+      `Reprends la colonne "Articles liés" du tracker (Calendrier_Editorial) et clique chaque lien interne d'un article publié. Note ici ceux qui ne fonctionnent plus (article renommé, dépublié, URL changée) pour que Gisèle les corrige.`
+    ],
+    addLabel: '+ Ajouter un lien à vérifier',
+    fields: [
+      {key:'source', label:'Article source', type:'text', first:true, placeholder:"Article qui contient le lien"},
+      {key:'cible', label:'Lien vers', type:'text', placeholder:'Article cible'},
+      {key:'fonctionne', label:'Lien fonctionne', type:'select', options:['','Oui','Non']},
+      {key:'date', label:'Date du contrôle', type:'text', placeholder:'jj/mm/aaaa'},
+      {key:'commentaire', label:'Commentaire', type:'text', placeholder:'—'},
+    ],
+    badge: signalLienOk,
+  },
+];
+
+const state = {};
+
+function esc(v){ return (v === null || v === undefined) ? '' : String(v).replace(/"/g,'&quot;'); }
+function uid(){ return 'r' + Date.now() + Math.random().toString(36).slice(2,6); }
+
+function emptyRow(section){
+  const row = { id: uid() };
+  section.fields.forEach(f => row[f.key] = '');
+  return row;
+}
+
+function buildApp(){
+  const app = document.getElementById('app');
+  app.innerHTML = SECTIONS.map((s, i) => `
+    ${i > 0 ? '<hr class="sep">' : ''}
+    <h2>${s.title}</h2>
+    <p class="sub">${s.sub}</p>
+    ${s.instrs.map(t => `<div class="instr">${t}</div>`).join('')}
+    <table>
+      <thead><tr>
+        ${s.fields.map((f,fi) => `<th class="${fi===0?'first':''}">${f.label}</th>`).join('')}
+        ${s.badge ? '<th>Statut</th>' : ''}
+        <th></th>
+      </tr></thead>
+      <tbody id="rows-${s.id}"></tbody>
+    </table>
+    <div class="actions"><button class="add" onclick="addRow('${s.id}')">${s.addLabel}</button></div>
+    <div class="saved-note" id="saved-${s.id}"></div>
+  `).join('');
+}
+
+function renderSection(sectionId){
+  const section = SECTIONS.find(s => s.id === sectionId);
+  const rows = state[sectionId];
+  const tbody = document.getElementById('rows-' + sectionId);
+  tbody.innerHTML = rows.map(r => {
+    const cells = section.fields.map((f, fi) => {
+      const cls = fi === 0 ? 'first' : '';
+      if(f.type === 'select'){
+        const opts = f.options.map(o => `<option value="${o}" ${o===r[f.key]?'selected':''}>${o===''?'—':o}</option>`).join('');
+        return `<td class="${cls}"><select onchange="updRow('${sectionId}','${r.id}','${f.key}',this.value)">${opts}</select></td>`;
+      }
+      const inputClass = fi === 0 ? 'name' : '';
+      const style = f.small ? 'style="text-align:left;font-size:11px"' : '';
+      return `<td class="${cls}"><input class="${inputClass}" ${style} value="${esc(r[f.key])}" placeholder="${f.placeholder||''}" oninput="updRow('${sectionId}','${r.id}','${f.key}',this.value)"></td>`;
+    }).join('');
+    let badgeCell = '';
+    if(section.badge){
+      const res = section.badge(r);
+      badgeCell = `<td>${res ? `<span class="badge ${res[0]}">${res[1]}</span>` : '<span style="color:var(--muted);font-size:12px">—</span>'}</td>`;
+    }
+    return `<tr>${cells}${badgeCell}<td><button class="del-btn" onclick="delRow('${sectionId}','${r.id}')" aria-label="Supprimer">✕</button></td></tr>`;
+  }).join('');
+  save(sectionId);
+}
+
+function updRow(sectionId, rowId, field, value){
+  const row = state[sectionId].find(r => r.id === rowId);
+  if(row){ row[field] = value; renderSection(sectionId); }
+}
+function addRow(sectionId){
+  const section = SECTIONS.find(s => s.id === sectionId);
+  state[sectionId].push(emptyRow(section));
+  renderSection(sectionId);
+}
+function delRow(sectionId, rowId){
+  state[sectionId] = state[sectionId].filter(r => r.id !== rowId);
+  renderSection(sectionId);
+}
+
+const timeouts = {};
+function save(sectionId){
+  clearTimeout(timeouts[sectionId]);
+  timeouts[sectionId] = setTimeout(async () => {
+    const section = SECTIONS.find(s => s.id === sectionId);
+    try{
+      await window.storage.set(section.storageKey, JSON.stringify(state[sectionId]), false);
+      const note = document.getElementById('saved-' + sectionId);
+      if(note) note.textContent = 'Enregistré ' + new Date().toLocaleTimeString('fr-FR', {hour:'2-digit', minute:'2-digit'});
+    }catch(e){ console.error('Erreur sauvegarde', sectionId, e); }
+  }, 400);
+}
+
+async function init(){
+  buildApp();
+  for(const section of SECTIONS){
+    try{
+      const r = await window.storage.get(section.storageKey, false);
+      const parsed = JSON.parse(r.value);
+      state[section.id] = (Array.isArray(parsed) && parsed.length > 0) ? parsed : [emptyRow(section), emptyRow(section)];
+    }catch(e){
+      state[section.id] = [emptyRow(section), emptyRow(section)];
+    }
+    renderSection(section.id);
+  }
+}
+
+init();
+</script>
