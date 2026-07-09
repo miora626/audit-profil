@@ -1,0 +1,142 @@
+<style>
+  :root{
+    --navy:#1F3864; --gold:#B08D3E; --bg:#FFFFFF; --card:#F7F7F5; --border:#E1DFD8;
+    --text:#262626; --muted:#6B6B66; --green:#0F6E56; --greenBg:#E1F5EE;
+    --red:#9C0006; --redBg:#FFEBEB; --amber:#854F0B; --amberBg:#FAEEDA;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{ --bg:#1B1B19; --card:#242422; --border:#3A3A36; --text:#EDEDE8; --muted:#A8A69E;
+      --greenBg:#0C2B24; --redBg:#3A1414; --amberBg:#3A2A0E; --amber:#F2C879; }
+  }
+  *{box-sizing:border-box}
+  .wrap{font-family:Arial,Helvetica,sans-serif;color:var(--text);max-width:1050px;margin:0 auto;padding:8px 0 24px}
+  h2{font-size:19px;font-weight:700;color:var(--navy);margin:0 0 4px}
+  @media (prefers-color-scheme: dark){ h2{color:#8FB4E8} }
+  .sub{font-size:13px;color:var(--muted);margin:0 0 12px}
+  .instr{background:var(--amberBg);color:var(--amber);border-radius:8px;padding:10px 14px;font-size:12.5px;margin-bottom:14px;line-height:1.5}
+  .instr b{font-weight:700}
+  table{width:100%;border-collapse:collapse;font-size:13px;background:var(--card);border:1px solid var(--border);border-radius:10px;overflow:hidden}
+  th{background:var(--navy);color:#fff;font-size:11px;text-transform:uppercase;letter-spacing:.02em;padding:9px 6px;text-align:center;font-weight:700}
+  th.first{text-align:left;padding-left:12px}
+  td{padding:6px;border-bottom:1px solid var(--border);text-align:center;vertical-align:middle}
+  td.first{text-align:left;padding-left:12px}
+  input,select{width:100%;border:1px solid var(--border);border-radius:5px;background:var(--bg);color:var(--text);padding:5px 6px;font-size:13px;text-align:center;font-family:inherit}
+  input.name{text-align:left}
+  input:focus,select:focus{outline:2px solid var(--navy);outline-offset:1px}
+  .badge{font-size:11px;font-weight:700;padding:4px 10px;border-radius:20px;white-space:nowrap;display:inline-block}
+  .ok{background:var(--greenBg);color:var(--green)}
+  .ko{background:var(--redBg);color:var(--red)}
+  .del-btn{background:none;border:none;color:var(--red);font-size:16px;cursor:pointer;padding:0;line-height:1}
+  .actions{display:flex;gap:10px;margin-top:12px;margin-bottom:4px}
+  button.add{background:var(--navy);color:#fff;border:none;border-radius:6px;padding:9px 16px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit}
+  button.add:hover{opacity:.9}
+  .saved-note{font-size:11px;color:var(--muted);margin-top:6px;text-align:right;min-height:14px}
+</style>
+
+<div class="wrap">
+  <h2>Fiche de brief — pourquoi cet article</h2>
+  <p class="sub">À remplir chaque lundi, avant que Gisèle commence à écrire.</p>
+  <div class="instr">
+    Un article ne part jamais d'une idée interne — toujours d'une vraie question entendue quelque part. Remplis une ligne par sujet du brief. La colonne <b>Cohérence</b> se calcule seule : elle signale un CTA trop tôt (Démo à l'étape Découverte) ou trop mou (Newsletter à l'étape Décision).
+  </div>
+  <table>
+    <thead><tr>
+      <th class="first">Titre / sujet</th>
+      <th>Question exacte entendue</th>
+      <th>Qui l'a entendue</th>
+      <th>Nb de fois</th>
+      <th>Persona</th>
+      <th>Étape</th>
+      <th>CTA prévu</th>
+      <th>Cohérence</th>
+      <th>Objectif chiffré</th>
+      <th>Statut</th>
+      <th></th>
+    </tr></thead>
+    <tbody id="rows"></tbody>
+  </table>
+  <div class="actions"><button class="add" onclick="addRow()">+ Ajouter un sujet</button></div>
+  <div class="saved-note" id="saved-note"></div>
+</div>
+
+<script>
+const QUI_OPTIONS = ['','Gerardo','Daniele','Miriam','Pipedrive','LinkedIn','Perte de deal','Autre'];
+const PERSONA_OPTIONS = ['','DRH','RRH','Responsable formation','Qualité/Qualiopi','Dirigeant','Autre'];
+const ETAPE_OPTIONS = ['','Découverte','Comparaison','Décision'];
+const CTA_OPTIONS = ['','Ressource téléchargeable','Newsletter','Article connexe','Diagnostic','Audit','Démo'];
+const STATUT_OPTIONS = ['','Validé','En attente'];
+
+let rows = [];
+
+function uid(){ return 'r' + Date.now() + Math.random().toString(36).slice(2,6); }
+function esc(v){ return (v === null || v === undefined) ? '' : String(v).replace(/"/g,'&quot;'); }
+
+function emptyRow(){
+  return { id: uid(), titre:'', question:'', qui:'', nb:'', persona:'', etape:'', cta:'', objectif:'', statut:'' };
+}
+
+function coherence(r){
+  if(!r.etape || !r.cta) return null;
+  if(r.etape === 'Découverte' && r.cta === 'Démo') return ['ko', 'À revoir — trop tôt'];
+  if(r.etape === 'Décision' && r.cta === 'Newsletter') return ['ko', 'À revoir — trop mou'];
+  return ['ok', 'Cohérent'];
+}
+
+function selectHtml(id, field, options, current){
+  return `<select onchange="update('${id}','${field}',this.value)">` +
+    options.map(o => `<option value="${o}" ${o===current?'selected':''}>${o===''?'—':o}</option>`).join('') +
+    `</select>`;
+}
+
+function render(){
+  const tbody = document.getElementById('rows');
+  tbody.innerHTML = rows.map(r => {
+    const coh = coherence(r);
+    return `<tr>
+      <td class="first"><input class="name" value="${esc(r.titre)}" placeholder="Titre / sujet" oninput="update('${r.id}','titre',this.value)"></td>
+      <td><input class="name" value="${esc(r.question)}" placeholder="Verbatim entendu" oninput="update('${r.id}','question',this.value)"></td>
+      <td>${selectHtml(r.id, 'qui', QUI_OPTIONS, r.qui)}</td>
+      <td><input value="${esc(r.nb)}" oninput="update('${r.id}','nb',this.value)"></td>
+      <td>${selectHtml(r.id, 'persona', PERSONA_OPTIONS, r.persona)}</td>
+      <td>${selectHtml(r.id, 'etape', ETAPE_OPTIONS, r.etape)}</td>
+      <td>${selectHtml(r.id, 'cta', CTA_OPTIONS, r.cta)}</td>
+      <td>${coh ? `<span class="badge ${coh[0]}">${coh[1]}</span>` : '<span style="color:var(--muted);font-size:12px">—</span>'}</td>
+      <td><input value="${esc(r.objectif)}" placeholder="ex. 3 RDV" oninput="update('${r.id}','objectif',this.value)"></td>
+      <td>${selectHtml(r.id, 'statut', STATUT_OPTIONS, r.statut)}</td>
+      <td><button class="del-btn" onclick="delRow('${r.id}')" aria-label="Supprimer">✕</button></td>
+    </tr>`;
+  }).join('');
+  save();
+}
+
+function update(id, field, value){
+  const row = rows.find(r => r.id === id);
+  if(row){ row[field] = value; render(); }
+}
+function addRow(){ rows.push(emptyRow()); render(); }
+function delRow(id){ rows = rows.filter(r => r.id !== id); render(); }
+
+let saveTimeout;
+function save(){
+  clearTimeout(saveTimeout);
+  saveTimeout = setTimeout(async () => {
+    try{
+      await window.storage.set('fiche-brief-lundi', JSON.stringify(rows), false);
+      document.getElementById('saved-note').textContent = 'Enregistré ' + new Date().toLocaleTimeString('fr-FR', {hour:'2-digit', minute:'2-digit'});
+    }catch(e){ console.error('Erreur sauvegarde', e); }
+  }, 400);
+}
+
+async function init(){
+  try{
+    const r = await window.storage.get('fiche-brief-lundi', false);
+    rows = JSON.parse(r.value);
+    if(!Array.isArray(rows) || rows.length === 0) rows = [emptyRow(), emptyRow()];
+  }catch(e){
+    rows = [emptyRow(), emptyRow()];
+  }
+  render();
+}
+
+init();
+</script>
