@@ -67,6 +67,11 @@
         <option value="pilier">Pilier (2500-3500 mots)</option>
         <option value="tactique">Tactique (800-1200 mots)</option>
       </select>
+      <label for="famille">Famille (fiche de style V2)</label>
+      <select id="famille">
+        <option value="A">Famille A — Récit de terrain</option>
+        <option value="B">Famille B — Guide/critères</option>
+      </select>
       <label for="article">Texte de l'article</label>
       <textarea id="article" placeholder="Colle ici le texte complet de l'article..."></textarea>
     </div>
@@ -93,20 +98,23 @@
         <button class="btn-primary" onclick="saveCheck()">Enregistrer cette vérification</button>
       </div>
       <div class="card" style="margin-top:14px">
-        <div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.03em;margin-bottom:8px">Style Gerardo <span class="tag-auto">AUTO</span></div>
-        <div class="metric"><span>Schéma « Ce n'est pas X. C'est Y. »</span><span id="b-cnest" class="badge ko">—</span></div>
+        <div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.03em;margin-bottom:8px">Socle commun <span class="tag-auto">AUTO</span></div>
         <div class="metric"><span>Tirets cadratins (—) détectés</span><span id="b-tirets" class="badge ko">—</span></div>
         <div class="metric"><span>Puces sèches détectées</span><span id="b-puces" class="badge ko">—</span></div>
-        <div class="metric"><span>Mentions "Daylindo"</span><span id="b-daylindo" class="badge ko">—</span></div>
-        <div class="metric"><span>Fin sur une question</span><span id="b-question" class="badge ko">—</span></div>
-        <div class="metric"><span>Jargon consultant / superlatifs creux</span><span></span></div>
+        <div class="metric"><span>Superlatifs creux</span><span id="b-superlatifs" class="badge ko">—</span></div>
+        <div class="metric"><span>Jargon consultant abstrait</span><span id="b-jargon" class="badge ko">—</span></div>
         <div id="jargon-chips" class="chips"></div>
+      </div>
+
+      <div class="card" style="margin-top:14px" id="famille-metrics-card">
+        <div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.03em;margin-bottom:8px" id="famille-metrics-title">Famille A <span class="tag-auto">AUTO</span></div>
+        <div id="famille-metrics-body"></div>
       </div>
 
       <div class="card" style="margin-top:14px">
         <div class="score-box">
-          <div class="score-num"><span id="style-score">0</span>/9</div>
-          <div class="score-label">Score de style (grille Gerardo)</div>
+          <div class="score-num"><span id="style-score">0</span><span id="style-score-total">/10</span></div>
+          <div class="score-label">Score de style (socle + famille choisie)</div>
           <div id="style-conforme-badge" class="conforme-badge ko">Non conforme</div>
         </div>
       </div>
@@ -119,8 +127,13 @@
   </div>
 
   <div class="card" style="margin-top:16px">
-    <div style="font-weight:700;font-size:14px;margin-bottom:6px">Checklist — Style Gerardo (9 points)</div>
-    <div id="style-checklist"></div>
+    <div style="font-weight:700;font-size:14px;margin-bottom:6px">Checklist — Socle commun (4 points)</div>
+    <div id="socle-checklist"></div>
+  </div>
+
+  <div class="card" style="margin-top:16px">
+    <div style="font-weight:700;font-size:14px;margin-bottom:6px" id="famille-checklist-title">Checklist — Famille A (6 points)</div>
+    <div id="famille-checklist"></div>
   </div>
 
   <div class="history card">
@@ -147,23 +160,46 @@ const QUESTIONS = [
 
 const CTA_KEYWORDS = ["démo","diagnostic","échange","échanger","contact","contactez","réserver","rendez-vous","discuter","en savoir plus","parler à","demander un"];
 
-const JARGON_KEYWORDS = ["outiller un système","converger","les acteurs","leviers de performance","révolutionnaire","unique","puissant"];
+const SUPERLATIF_KEYWORDS = ["révolutionnaire","unique","puissant"];
+const CONSULTANT_KEYWORDS = ["outiller un système","converger","les acteurs","leviers de performance"];
+const JARGON_KEYWORDS = [...SUPERLATIF_KEYWORDS, ...CONSULTANT_KEYWORDS];
 
-const STYLE_QUESTIONS = [
-  {id:1, text:"Le texte démarre sur une scène concrète, pas un concept ou une statistique ?", auto:false},
-  {id:2, text:"Au moins une occurrence du schéma « Ce n'est pas X. C'est Y. » ?", auto:true},
-  {id:3, text:"Les énumérations sont en prose ordinale, pas en puces à longueur égale ?", auto:true},
-  {id:4, text:"Aucun tiret cadratin ?", auto:true},
-  {id:5, text:"Aucune énumération à 3 items artificiellement calibrés à la même longueur ?", auto:false},
-  {id:6, text:"Une citation de terrain attribuée par fonction, pas par nom (sauf accord contraire) ?", auto:false},
-  {id:7, text:"Daylindo apparaît au maximum 1 à 2 fois hors du pavé de clôture ?", auto:true},
-  {id:8, text:"La fin ouvre une question plutôt que de conclure ou vendre ?", auto:true},
-  {id:9, text:"Pas de jargon consultant creux sans que le mot serve un point précis ?", auto:true},
+const SOCLE_QUESTIONS = [
+  {id:'s1', text:"Phrases courtes, peu d'adjectifs superlatifs ?", auto:true},
+  {id:'s2', text:"Aucun tiret cadratin ?", auto:true},
+  {id:'s3', text:"Aucune énumération à items calibrés à la même longueur (puces sèches) ?", auto:true},
+  {id:'s4', text:"Vocabulaire concret plutôt qu'abstrait/consultant ?", auto:true},
 ];
 
+const FAMILLE_A_QUESTIONS = [
+  {id:'a1', text:"Démarre sur une scène concrète, pas un concept ou une statistique ?", auto:false},
+  {id:'a2', text:"Au moins une occurrence du schéma « Ce n'est pas X. C'est Y. » ?", auto:true},
+  {id:'a3', text:"Énumérations en prose ordinale, pas en liste à puces ?", auto:true},
+  {id:'a4', text:"Citation de terrain attribuée par fonction, pas par nom ?", auto:false},
+  {id:'a5', text:"Daylindo absent ou quasi-absent avant le pavé de clôture ?", auto:true},
+  {id:'a6', text:"Fin en question ouverte, pas de CTA à cet endroit ?", auto:true},
+];
+
+const FAMILLE_B_QUESTIONS = [
+  {id:'b1', text:"Promesse/définition-critères posée dès la première phrase ?", auto:false},
+  {id:'b2', text:"Daylindo peut apparaître en intro comme expert-observateur (pas argument d'autorité) ?", auto:false},
+  {id:'b3', text:"Titres de section qui prennent position (pas de titre neutre) ?", auto:false},
+  {id:'b4', text:"Une seule image centrale, pas de multiplication de métaphores ?", auto:false},
+  {id:'b5', text:"Au moins une mini-série de questions de contrôle opérationnelles ?", auto:true},
+  {id:'b6', text:"L'outil n'est jamais opposé au métier — toujours « rend visible/traçable/démontrable » ?", auto:true},
+  {id:'b7', text:"Conclusion courte qui referme sur la thèse, sans ouvrir un sujet nouveau ?", auto:false},
+];
+
+function familleQuestions(f){ return f === 'B' ? FAMILLE_B_QUESTIONS : FAMILLE_A_QUESTIONS; }
+
 let styleManualState = {};
-STYLE_QUESTIONS.forEach(q => { if(!q.auto) styleManualState[q.id] = false; });
-let styleAuto = { cnest:false, puces:false, tirets:false, daylindo:false, question:false, jargon:false };
+[...FAMILLE_A_QUESTIONS, ...FAMILLE_B_QUESTIONS].forEach(q => { if(!q.auto) styleManualState[q.id] = false; });
+
+let styleAuto = {
+  noTirets:false, noPuces:false, noSuperlatifs:false, noJargon:false,
+  cnest:false, daylindoAbsentEarly:false, endsQuestion:false,
+  controlSeries:false, visibleTraceable:false,
+};
 
 const RANGES = {
   standard: [1200, 1800],
@@ -196,11 +232,28 @@ function onManualToggle(id, checked){
   computeScore();
 }
 
-function renderStyleChecklist(){
-  const el = document.getElementById('style-checklist');
-  el.innerHTML = STYLE_QUESTIONS.map(q => {
+function renderSocleChecklist(){
+  const el = document.getElementById('socle-checklist');
+  const passedMap = { s1:styleAuto.noSuperlatifs, s2:styleAuto.noTirets, s3:styleAuto.noPuces, s4:styleAuto.noJargon };
+  el.innerHTML = SOCLE_QUESTIONS.map(q => `<div class="checklist-item">
+      <input type="checkbox" disabled ${passedMap[q.id] ? 'checked' : ''}>
+      <span class="txt">${q.text} <span class="tag-auto">AUTO</span></span>
+    </div>`).join('');
+}
+
+function renderFamilleChecklist(){
+  const famille = document.getElementById('famille').value;
+  const questions = familleQuestions(famille);
+  const passedMap = {
+    a2:styleAuto.cnest, a3:styleAuto.noPuces, a5:styleAuto.daylindoAbsentEarly, a6:styleAuto.endsQuestion,
+    b5:styleAuto.controlSeries, b6:styleAuto.visibleTraceable,
+  };
+  document.getElementById('famille-checklist-title').textContent =
+    famille === 'B' ? 'Checklist — Famille B (7 points)' : 'Checklist — Famille A (6 points)';
+
+  const el = document.getElementById('famille-checklist');
+  el.innerHTML = questions.map(q => {
     if(q.auto){
-      const passedMap = { 2:styleAuto.cnest, 3:styleAuto.puces, 4:styleAuto.tirets, 7:styleAuto.daylindo, 8:styleAuto.question, 9:styleAuto.jargon };
       const passed = passedMap[q.id];
       return `<div class="checklist-item">
         <input type="checkbox" disabled ${passed ? 'checked' : ''}>
@@ -208,7 +261,7 @@ function renderStyleChecklist(){
       </div>`;
     }
     return `<div class="checklist-item">
-      <input type="checkbox" data-id="${q.id}" ${styleManualState[q.id] ? 'checked' : ''} onchange="onStyleManualToggle(${q.id}, this.checked)">
+      <input type="checkbox" ${styleManualState[q.id] ? 'checked' : ''} onchange="onStyleManualToggle('${q.id}', this.checked)">
       <span class="txt">${q.text}</span>
     </div>`;
   }).join('');
@@ -250,49 +303,77 @@ function analyze(){
     ? found.map(k => `<span class="chip">${k}</span>`).join('')
     : `<span class="chip" style="opacity:.5">aucun mot-clé détecté</span>`;
 
-  analyzeStyle(text);
+  analyzeStyle(text, document.getElementById('famille').value);
   computeScore();
 }
 
-function analyzeStyle(text){
+function analyzeStyle(text, famille){
   const norm = text.replace(/[\u2019]/g, "'");
-
-  // "Ce n'est pas X. C'est Y."
-  const cnestMatch = /ce n'est pas [^.!?]{2,80}[.!?]\s*c'est /i.test(norm);
-  styleAuto.cnest = cnestMatch;
-  setBadge('b-cnest', cnestMatch, cnestMatch ? 'Détecté' : 'Non détecté');
-
-  // Tirets cadratins
-  const tiretsCount = (text.match(/—/g) || []).length;
-  styleAuto.tirets = tiretsCount === 0;
-  setBadge('b-tirets', tiretsCount === 0, tiretsCount === 0 ? 'Aucun' : `${tiretsCount} détecté(s)`);
-
-  // Puces sèches (lignes commençant par -, •, *, ✅, →)
-  const bulletLines = (text.match(/^[ \t]*[-•*✅→][ \t]+/gm) || []).length;
-  styleAuto.puces = bulletLines === 0;
-  setBadge('b-puces', bulletLines === 0, bulletLines === 0 ? 'Aucune' : `${bulletLines} ligne(s)`);
-
-  // Mentions Daylindo
-  const daylindoCount = (norm.match(/daylindo/gi) || []).length;
-  styleAuto.daylindo = daylindoCount <= 3;
-  setBadge('b-daylindo', daylindoCount <= 3, `${daylindoCount} mention(s)`);
-
-  // Fin sur une question
-  const trimmed = norm.trim();
-  const endsWithQuestion = trimmed.length > 0 && trimmed.slice(-1) === '?';
-  styleAuto.question = endsWithQuestion;
-  setBadge('b-question', endsWithQuestion, endsWithQuestion ? 'Oui' : 'Non');
-
-  // Jargon consultant / superlatifs creux
   const lower = norm.toLowerCase();
-  const jargonFound = JARGON_KEYWORDS.filter(k => lower.includes(k));
-  styleAuto.jargon = jargonFound.length === 0;
+
+  // --- Socle commun ---
+  const superlatifsFound = SUPERLATIF_KEYWORDS.filter(k => lower.includes(k));
+  styleAuto.noSuperlatifs = superlatifsFound.length === 0;
+  setBadge('b-superlatifs', styleAuto.noSuperlatifs, styleAuto.noSuperlatifs ? 'Aucun' : superlatifsFound.join(', '));
+
+  const consultantFound = CONSULTANT_KEYWORDS.filter(k => lower.includes(k));
+  styleAuto.noJargon = consultantFound.length === 0;
+  setBadge('b-jargon', styleAuto.noJargon, styleAuto.noJargon ? 'Aucun' : consultantFound.join(', '));
+
   const jargonBox = document.getElementById('jargon-chips');
-  jargonBox.innerHTML = jargonFound.length
-    ? jargonFound.map(k => `<span class="chip">${k}</span>`).join('')
+  const allFound = [...superlatifsFound, ...consultantFound];
+  jargonBox.innerHTML = allFound.length
+    ? allFound.map(k => `<span class="chip">${k}</span>`).join('')
     : `<span class="chip" style="opacity:.5">aucun détecté</span>`;
 
-  renderStyleChecklist();
+  const tiretsCount = (text.match(/—/g) || []).length;
+  styleAuto.noTirets = tiretsCount === 0;
+  setBadge('b-tirets', styleAuto.noTirets, styleAuto.noTirets ? 'Aucun' : `${tiretsCount} détecté(s)`);
+
+  const bulletLines = (text.match(/^[ \t]*[-•*✅→][ \t]+/gm) || []).length;
+  styleAuto.noPuces = bulletLines === 0;
+  setBadge('b-puces', styleAuto.noPuces, styleAuto.noPuces ? 'Aucune' : `${bulletLines} ligne(s)`);
+
+  // --- Famille A ---
+  const cnestMatch = /ce n'est pas [^.!?]{2,80}[.!?]\s*c'est /i.test(norm);
+  styleAuto.cnest = cnestMatch;
+
+  const cut = Math.floor(norm.length * 0.85);
+  styleAuto.daylindoAbsentEarly = !/daylindo/i.test(norm.slice(0, cut));
+
+  const trimmed = norm.trim();
+  styleAuto.endsQuestion = trimmed.length > 0 && trimmed.slice(-1) === '?';
+
+  // --- Famille B ---
+  const sentences = text.match(/[^.!?]+[.!?]+/g) || [];
+  let consecutive = 0, found = false;
+  for(const s of sentences){
+    if(/\?\s*$/.test(s.trim())){
+      consecutive++;
+      if(consecutive >= 2){ found = true; break; }
+    } else { consecutive = 0; }
+  }
+  styleAuto.controlSeries = found;
+
+  const vtWords = ['visible','traçable','démontrable'].filter(w => lower.includes(w));
+  styleAuto.visibleTraceable = vtWords.length >= 2;
+
+  // --- Rendu ---
+  document.getElementById('famille-metrics-title').textContent = (famille === 'B' ? 'Famille B' : 'Famille A') + ' — signaux auto';
+  const metricsBody = document.getElementById('famille-metrics-body');
+  if(famille === 'B'){
+    metricsBody.innerHTML = `
+      <div class="metric"><span>Mini-série de questions de contrôle (2+ à la suite)</span><span id="b-control" class="badge ${styleAuto.controlSeries ? 'ok' : 'ko'}">${styleAuto.controlSeries ? 'Détectée' : 'Non détectée'}</span></div>
+      <div class="metric"><span>« Visible / traçable / démontrable »</span><span id="b-vt" class="badge ${styleAuto.visibleTraceable ? 'ok' : 'ko'}">${styleAuto.visibleTraceable ? 'Détecté' : 'Non détecté'}</span></div>`;
+  } else {
+    metricsBody.innerHTML = `
+      <div class="metric"><span>Schéma « Ce n'est pas X. C'est Y. »</span><span id="b-cnest" class="badge ${styleAuto.cnest ? 'ok' : 'ko'}">${styleAuto.cnest ? 'Détecté' : 'Non détecté'}</span></div>
+      <div class="metric"><span>Daylindo absent avant la fin</span><span id="b-daylindo" class="badge ${styleAuto.daylindoAbsentEarly ? 'ok' : 'ko'}">${styleAuto.daylindoAbsentEarly ? 'Oui' : 'Mentionné tôt'}</span></div>
+      <div class="metric"><span>Fin sur une question</span><span id="b-question" class="badge ${styleAuto.endsQuestion ? 'ok' : 'ko'}">${styleAuto.endsQuestion ? 'Oui' : 'Non'}</span></div>`;
+  }
+
+  renderSocleChecklist();
+  renderFamilleChecklist();
   computeStyleScore();
 }
 
@@ -304,15 +385,26 @@ function setBadge(id, ok, label){
 }
 
 function computeStyleScore(){
+  const famille = document.getElementById('famille').value;
+  const soclePassed = { s1:styleAuto.noSuperlatifs, s2:styleAuto.noTirets, s3:styleAuto.noPuces, s4:styleAuto.noJargon };
+  const famillePassed = {
+    a2:styleAuto.cnest, a3:styleAuto.noPuces, a5:styleAuto.daylindoAbsentEarly, a6:styleAuto.endsQuestion,
+    b5:styleAuto.controlSeries, b6:styleAuto.visibleTraceable,
+  };
+
   let score = 0;
-  const passedMap = { 2:styleAuto.cnest, 3:styleAuto.puces, 4:styleAuto.tirets, 7:styleAuto.daylindo, 8:styleAuto.question, 9:styleAuto.jargon };
-  STYLE_QUESTIONS.forEach(q => {
-    if(q.auto){ if(passedMap[q.id]) score++; }
+  SOCLE_QUESTIONS.forEach(q => { if(soclePassed[q.id]) score++; });
+  const questions = familleQuestions(famille);
+  questions.forEach(q => {
+    if(q.auto){ if(famillePassed[q.id]) score++; }
     else if(styleManualState[q.id]) score++;
   });
+
+  const total = SOCLE_QUESTIONS.length + questions.length;
   document.getElementById('style-score').textContent = score;
+  document.getElementById('style-score-total').textContent = '/' + total;
   const badge = document.getElementById('style-conforme-badge');
-  const conforme = score >= 7;
+  const conforme = score >= Math.ceil(total * 0.75);
   badge.textContent = conforme ? "Conforme" : "Non conforme";
   badge.className = "conforme-badge " + (conforme ? "ok" : "ko");
   return score;
@@ -344,6 +436,7 @@ function computeScore(){
 
 document.getElementById('article').addEventListener('input', analyze);
 document.getElementById('type').addEventListener('change', analyze);
+document.getElementById('famille').addEventListener('change', analyze);
 document.getElementById('links-override').addEventListener('input', computeScore);
 
 function slugify(s){
@@ -353,35 +446,38 @@ function slugify(s){
 async function saveCheck(){
   const title = document.getElementById('title').value.trim() || "Article sans titre";
   const type = document.getElementById('type').value;
+  const famille = document.getElementById('famille').value;
   const text = document.getElementById('article').value;
   const linksVal = parseInt(document.getElementById('links-override').value, 10) || 0;
   const score = computeScore();
   const styleScore = computeStyleScore();
+  const styleTotal = SOCLE_QUESTIONS.length + familleQuestions(famille).length;
   const slug = slugify(title);
-  const record = { title, type, text, manualState: {...manualState}, styleManualState: {...styleManualState}, linksVal, score, styleScore, conforme: score >= 10, styleConforme: styleScore >= 7, date: new Date().toISOString() };
+  const record = { title, type, famille, text, manualState: {...manualState}, styleManualState: {...styleManualState}, linksVal, score, styleScore, styleTotal, conforme: score >= 10, styleConforme: styleScore >= Math.ceil(styleTotal * 0.75), date: new Date().toISOString() };
 
   try{
-    await window.storage.set('article-check:' + slug, JSON.stringify(record), false);
+    localStorage.setItem('article-check:' + slug, JSON.stringify(record));
     let index = [];
     try{
-      const r = await window.storage.get('checklist-index', false);
-      index = JSON.parse(r.value);
+      const raw = localStorage.getItem('checklist-index');
+      index = raw ? JSON.parse(raw) : [];
     }catch(e){ index = []; }
     index = index.filter(i => i.slug !== slug);
-    index.unshift({ slug, title, type, score, styleScore, conforme: score >= 10, styleConforme: styleScore >= 7, date: record.date });
-    await window.storage.set('checklist-index', JSON.stringify(index), false);
+    index.unshift({ slug, title, type, famille, score, styleScore, styleTotal, conforme: score >= 10, styleConforme: record.styleConforme, date: record.date });
+    localStorage.setItem('checklist-index', JSON.stringify(index));
     renderHistory(index);
   }catch(e){
     console.error('Erreur sauvegarde', e);
   }
 }
 
-async function loadCheck(slug){
+function loadCheck(slug){
   try{
-    const r = await window.storage.get('article-check:' + slug, false);
-    const record = JSON.parse(r.value);
+    const raw = localStorage.getItem('article-check:' + slug);
+    const record = JSON.parse(raw);
     document.getElementById('title').value = record.title;
     document.getElementById('type').value = record.type;
+    document.getElementById('famille').value = record.famille || 'A';
     document.getElementById('article').value = record.text;
     manualState = {...record.manualState};
     styleManualState = record.styleManualState ? {...record.styleManualState} : styleManualState;
@@ -395,16 +491,16 @@ async function loadCheck(slug){
   }
 }
 
-async function deleteCheck(slug){
+function deleteCheck(slug){
   try{
-    await window.storage.delete('article-check:' + slug, false);
+    localStorage.removeItem('article-check:' + slug);
     let index = [];
     try{
-      const r = await window.storage.get('checklist-index', false);
-      index = JSON.parse(r.value);
+      const raw = localStorage.getItem('checklist-index');
+      index = raw ? JSON.parse(raw) : [];
     }catch(e){ index = []; }
     index = index.filter(i => i.slug !== slug);
-    await window.storage.set('checklist-index', JSON.stringify(index), false);
+    localStorage.setItem('checklist-index', JSON.stringify(index));
     renderHistory(index);
   }catch(e){
     console.error('Erreur suppression', e);
@@ -418,12 +514,13 @@ function renderHistory(index){
     return;
   }
   el.innerHTML = `<table>
-    <tr><th>Article</th><th>Type</th><th>Fond</th><th>Style</th><th>Statut</th><th>Date</th><th></th><th></th></tr>
+    <tr><th>Article</th><th>Type</th><th>Famille</th><th>Fond</th><th>Style</th><th>Statut</th><th>Date</th><th></th><th></th></tr>
     ${index.map(i => `<tr>
       <td>${i.title}</td>
       <td>${i.type}</td>
+      <td>${i.famille || '—'}</td>
       <td>${i.score}/12</td>
-      <td>${i.styleScore !== undefined ? i.styleScore + '/9' : '—'}</td>
+      <td>${i.styleScore !== undefined ? i.styleScore + '/' + (i.styleTotal || '?') : '—'}</td>
       <td><span class="badge ${i.conforme ? 'ok' : 'ko'}">${i.conforme ? 'Conforme' : 'Non conforme'}</span></td>
       <td>${new Date(i.date).toLocaleDateString('fr-FR')}</td>
       <td><button class="link-btn" onclick="loadCheck('${i.slug}')">Charger</button></td>
@@ -432,10 +529,10 @@ function renderHistory(index){
   </table>`;
 }
 
-async function initHistory(){
+function initHistory(){
   try{
-    const r = await window.storage.get('checklist-index', false);
-    const index = JSON.parse(r.value);
+    const raw = localStorage.getItem('checklist-index');
+    const index = raw ? JSON.parse(raw) : [];
     renderHistory(index);
   }catch(e){
     renderHistory([]);
