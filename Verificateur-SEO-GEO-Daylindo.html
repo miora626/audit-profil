@@ -1,0 +1,738 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Vérificateur SEO & GEO — Daylindo</title>
+<style>
+  :root{
+    --ink:#101B2D;
+    --navy:#1F3864;
+    --teal:#0F7A72;
+    --paper:#F7F5F0;
+    --card:#FFFFFF;
+    --line:#E3DFD4;
+    --muted:#6B7280;
+    --pass:#1E8E5A;
+    --pass-bg:#E7F5EC;
+    --warn:#B7791F;
+    --warn-bg:#FBF1DD;
+    --fail:#C0392B;
+    --fail-bg:#FBEAE8;
+    --neutral:#8A8577;
+    --neutral-bg:#EFECE3;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    font-family:"Segoe UI",-apple-system,BlinkMacSystemFont,Helvetica,Arial,sans-serif;
+    background:var(--paper);
+    color:var(--ink);
+    padding:32px 20px 80px;
+  }
+  .wrap{max-width:980px;margin:0 auto;}
+  header.top{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-end;
+    gap:20px;
+    margin-bottom:28px;
+    border-bottom:2px solid var(--ink);
+    padding-bottom:16px;
+  }
+  .eyebrow{
+    font-size:12px;
+    letter-spacing:.14em;
+    text-transform:uppercase;
+    color:var(--teal);
+    font-weight:700;
+    margin-bottom:6px;
+  }
+  h1{
+    font-size:26px;
+    margin:0;
+    letter-spacing:-0.01em;
+  }
+  .sub{
+    color:var(--muted);
+    font-size:13px;
+    max-width:420px;
+    text-align:right;
+    line-height:1.4;
+  }
+  .score-panel{
+    position:sticky;
+    top:14px;
+    z-index:50;
+    background:var(--ink);
+    color:#fff;
+    border-radius:14px;
+    padding:18px 22px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:20px;
+    margin-bottom:28px;
+    box-shadow:0 8px 24px rgba(16,27,45,.18);
+  }
+  .score-num{
+    font-size:34px;
+    font-weight:800;
+    line-height:1;
+    font-variant-numeric:tabular-nums;
+  }
+  .score-label{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:#B9C2D0;margin-top:4px;}
+  .score-bar-wrap{flex:1;height:8px;background:rgba(255,255,255,.15);border-radius:6px;overflow:hidden;}
+  .score-bar{height:100%;border-radius:6px;transition:width .3s ease, background .3s ease;}
+  .score-tally{display:flex;gap:14px;font-size:12px;color:#D8DEE7;white-space:nowrap;}
+  .score-tally b{color:#fff;}
+
+  section.card{
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:12px;
+    padding:22px 24px;
+    margin-bottom:20px;
+  }
+  .card h2{
+    font-size:16px;
+    margin:0 0 4px;
+    display:flex;
+    align-items:center;
+    gap:8px;
+  }
+  .card h2 .num{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    width:22px;height:22px;
+    border-radius:6px;
+    background:var(--navy);
+    color:#fff;
+    font-size:11px;
+    font-weight:700;
+  }
+  .card .desc{color:var(--muted);font-size:12.5px;margin:0 0 16px;}
+
+  label.field-label{
+    display:block;
+    font-size:12.5px;
+    font-weight:600;
+    margin:14px 0 6px;
+    color:var(--ink);
+  }
+  label.field-label .hint{font-weight:400;color:var(--muted);}
+  input[type=text], textarea, select{
+    width:100%;
+    border:1px solid #D6D2C6;
+    border-radius:8px;
+    padding:9px 11px;
+    font-size:13.5px;
+    font-family:inherit;
+    color:var(--ink);
+    background:#FCFBF8;
+  }
+  input[type=text]:focus, textarea:focus, select:focus{
+    outline:2px solid var(--teal);
+    outline-offset:1px;
+    border-color:var(--teal);
+  }
+  textarea{resize:vertical;line-height:1.5;}
+  .row{display:grid;grid-template-columns:1fr 1fr;gap:18px;}
+  .row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;}
+  @media (max-width:720px){.row, .row3{grid-template-columns:1fr;}}
+
+  .meta-line{display:flex;justify-content:space-between;align-items:center;margin-top:6px;flex-wrap:wrap;gap:8px;}
+  .counter{font-size:11.5px;color:var(--muted);font-variant-numeric:tabular-nums;}
+
+  .pill{
+    display:inline-flex;
+    align-items:center;
+    gap:5px;
+    font-size:11.5px;
+    font-weight:700;
+    padding:3px 9px;
+    border-radius:100px;
+    white-space:nowrap;
+  }
+  .pill-pass{color:var(--pass);background:var(--pass-bg);}
+  .pill-warn{color:var(--warn);background:var(--warn-bg);}
+  .pill-fail{color:var(--fail);background:var(--fail-bg);}
+  .pill-neutral{color:var(--neutral);background:var(--neutral-bg);}
+
+  .check-list{list-style:none;margin:10px 0 0;padding:0;display:flex;flex-direction:column;gap:8px;}
+  .check-list li{
+    display:flex;
+    align-items:flex-start;
+    gap:9px;
+    font-size:13px;
+    line-height:1.45;
+    padding:8px 10px;
+    border-radius:8px;
+    background:#FAF9F5;
+    border:1px solid #EEEAE0;
+  }
+  .check-list li .pill{flex-shrink:0;margin-top:1px;}
+
+  .manual-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:2px;}
+  .manual-list li{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    padding:9px 4px;
+    border-bottom:1px solid #F0EDE4;
+    font-size:13.5px;
+  }
+  .manual-list li:last-child{border-bottom:none;}
+  .manual-list input[type=checkbox]{
+    width:17px;height:17px;
+    accent-color:var(--teal);
+    flex-shrink:0;
+  }
+  .manual-list label{flex:1;cursor:pointer;}
+  .manual-list .ref{color:var(--muted);font-size:11.5px;}
+
+  .flag-box{
+    margin-top:12px;
+    padding:12px 14px;
+    border-radius:8px;
+    background:var(--fail-bg);
+    border:1px solid #F0CFC9;
+  }
+  .flag-box.ok{background:var(--pass-bg);border-color:#CBE7D6;}
+  .flag-box ul{margin:6px 0 0;padding-left:18px;font-size:12.5px;}
+  .flag-box p{margin:0;font-size:12.5px;font-weight:700;}
+
+  .stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:14px;}
+  @media (max-width:720px){.stat-grid{grid-template-columns:repeat(2,1fr);}}
+  .stat{
+    background:#FAF9F5;
+    border:1px solid #EEEAE0;
+    border-radius:8px;
+    padding:10px 12px;
+  }
+  .stat .v{font-size:19px;font-weight:800;}
+  .stat .l{font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-top:2px;}
+
+  .footer-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:6px;}
+  button.reset{
+    background:none;
+    border:1px solid #D6D2C6;
+    color:var(--muted);
+    border-radius:8px;
+    padding:8px 14px;
+    font-size:12.5px;
+    cursor:pointer;
+  }
+  button.reset:hover{border-color:var(--fail);color:var(--fail);}
+  small.small-note{color:var(--muted);font-size:11.5px;display:block;margin-top:6px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <div>
+      <div class="eyebrow">Daylindo · Contenu SEO & GEO</div>
+      <h1>Vérificateur de rédaction</h1>
+    </div>
+    <div class="sub">Colle les éléments d'un article et vérifie en direct qu'il respecte le brief général rédaction SEO/GEO.</div>
+  </header>
+
+  <div class="score-panel">
+    <div>
+      <div class="score-num" id="scoreNum">0%</div>
+      <div class="score-label">Conformité au brief</div>
+    </div>
+    <div class="score-bar-wrap"><div class="score-bar" id="scoreBar" style="width:0%;background:#8A8577;"></div></div>
+    <div class="score-tally">
+      <span><b id="tallyPass">0</b> ok</span>
+      <span><b id="tallyWarn">0</b> à surveiller</span>
+      <span><b id="tallyFail">0</b> à corriger</span>
+    </div>
+  </div>
+
+  <!-- ============ CONFIG ============ -->
+  <section class="card">
+    <h2><span class="num">1</span>Paramètres de l'article</h2>
+    <p class="desc">Sert de base à toutes les vérifications ci-dessous.</p>
+    <div class="row">
+      <div>
+        <label class="field-label">Mot-clé principal</label>
+        <input type="text" id="keyword" placeholder="ex. AFEST">
+      </div>
+      <div>
+        <label class="field-label">Type de contenu / étage du tunnel <span class="hint">(fixe la longueur cible)</span></label>
+        <select id="contentType"></select>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ BALISES ============ -->
+  <section class="card">
+    <h2><span class="num">2</span>Balises</h2>
+    <p class="desc">Title, meta description, slug, H1 — les « affiches de cinéma » de l'article.</p>
+
+    <label class="field-label">Balise Title <span class="hint">(50-60 caractères, mot-clé au début)</span></label>
+    <input type="text" id="title" placeholder="AFEST : le guide complet pour la mettre en place | Daylindo">
+    <div class="meta-line">
+      <span class="counter" id="titleCount">0 caractères</span>
+      <span id="titlePill"></span>
+    </div>
+
+    <label class="field-label">Meta description <span class="hint">(140-160 caractères, mot-clé + appel à l'action)</span></label>
+    <textarea id="metaDesc" rows="2" placeholder="AFEST : définition, cadre légal, étapes de mise en place et financement OPCO. Découvrez comment structurer une formation terrain..."></textarea>
+    <div class="meta-line">
+      <span class="counter" id="metaCount">0 caractères</span>
+      <span id="metaPill"></span>
+    </div>
+
+    <div class="row">
+      <div>
+        <label class="field-label">Slug (URL) <span class="hint">3-5 mots, minuscules, tirets</span></label>
+        <input type="text" id="slug" placeholder="afest/referent-afest">
+        <div class="meta-line"><span></span><span id="slugPill"></span></div>
+      </div>
+      <div>
+        <label class="field-label">H1 <span class="hint">40-70 caractères, différent du Title</span></label>
+        <input type="text" id="h1" placeholder="L'AFEST en 2026 : comment structurer une formation en situation de travail ?">
+        <div class="meta-line"><span class="counter" id="h1Count">0 caractères</span><span id="h1Pill"></span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ CORPS ============ -->
+  <section class="card">
+    <h2><span class="num">3</span>Corps de l'article</h2>
+    <p class="desc">Colle le texte complet. Marque les sous-titres avec <code>## </code> pour un H2 et <code>### </code> pour un H3 (comme en Markdown) pour que l'outil les détecte.</p>
+    <textarea id="body" rows="14" placeholder="## Qu'est-ce que l'AFEST ?
+
+L'AFEST (Action de Formation en Situation de Travail) est...
+
+## Comment financer une AFEST ?
+
+..."></textarea>
+
+    <div class="stat-grid">
+      <div class="stat"><div class="v" id="statWords">0</div><div class="l">Mots</div></div>
+      <div class="stat"><div class="v" id="statH2">0</div><div class="l">H2 détectés</div></div>
+      <div class="stat"><div class="v" id="statPara">0</div><div class="l">Paragraphes</div></div>
+      <div class="stat"><div class="v" id="statSent">0</div><div class="l">Phrases</div></div>
+    </div>
+
+    <ul class="check-list" id="bodyChecks"></ul>
+
+    <div class="flag-box" id="vocabBox">
+      <p>Vocabulaire & conformité</p>
+      <ul id="vocabList"></ul>
+    </div>
+  </section>
+
+  <!-- ============ GEO ============ -->
+  <section class="card">
+    <h2><span class="num">4</span>GEO & E-E-A-T</h2>
+    <p class="desc">Ce qui fait qu'un contenu est cité par les IA — à cocher manuellement, jugement du rédacteur requis.</p>
+    <ul class="manual-list" id="geoList"></ul>
+  </section>
+
+  <!-- ============ IMAGES ============ -->
+  <section class="card">
+    <h2><span class="num">5</span>Images</h2>
+    <ul class="manual-list" id="imgList"></ul>
+  </section>
+
+  <!-- ============ MAILLAGE ============ -->
+  <section class="card">
+    <h2><span class="num">6</span>Liens & maillage</h2>
+    <div class="row3">
+      <div>
+        <label class="field-label">Liens internes <span class="hint">(cible 3-6)</span></label>
+        <input type="text" id="linksInternal" placeholder="4">
+        <div class="meta-line"><span></span><span id="linksInternalPill"></span></div>
+      </div>
+      <div>
+        <label class="field-label">Liens externes d'autorité <span class="hint">(cible 1-3)</span></label>
+        <input type="text" id="linksExternal" placeholder="2">
+        <div class="meta-line"><span></span><span id="linksExternalPill"></span></div>
+      </div>
+      <div>
+        <label class="field-label">&nbsp;</label>
+        <div class="meta-line" style="margin-top:9px;"><span class="counter">Le reste ci-dessous se coche manuellement</span></div>
+      </div>
+    </div>
+    <ul class="manual-list" id="linksList"></ul>
+  </section>
+
+  <div class="footer-actions">
+    <button class="reset" id="resetBtn">Réinitialiser tous les champs</button>
+  </div>
+  <small class="small-note">Outil basé sur le Brief général rédaction SEO/GEO (Daylindo). Les vérifications automatiques sont indicatives : la relecture humaine reste décisive, notamment pour la conformité AFEST/GEPP/financement.</small>
+
+</div>
+
+<script>
+// ---------------------------------------------------------------
+// DATA
+// ---------------------------------------------------------------
+const CONTENT_TYPES = [
+  { id:"def",     label:"Définition / FAQ courte (TOFU)",              min:400,  max:900 },
+  { id:"blog",    label:"Article de blog / actualité (TOFU-MOFU)",     min:800,  max:1500 },
+  { id:"fille",   label:"Page fille de cocon",                         min:800,  max:1500 },
+  { id:"compar",  label:"Comparatif (MOFU)",                           min:1200, max:2500 },
+  { id:"cas",     label:"Étude de cas client (MOFU-BOFU)",             min:1000, max:1800 },
+  { id:"landing", label:"Landing / page produit (BOFU)",               min:600,  max:1200 },
+  { id:"money",   label:"Page money (MOFU-BOFU)",                      min:1000, max:1800 },
+  { id:"pilier",  label:"Guide complet / page pilier (TOFU-MOFU)",     min:1500, max:3200 },
+];
+
+const VOCAB_RULES = [
+  { re:/\btuteurs?\b/i, msg:"« tuteur(s) » détecté → utiliser « formateurs terrain »." },
+  { re:/\bcertifie(r|nt|z)?\b|\bcertifi[ée]e?s?\b/i, msg:"« certifier / certifié » détecté → utiliser « produire des preuves opposables »." },
+  { re:/\bformer\s+les\s+collaborateurs?\b/i, msg:"« former les collaborateurs » détecté → utiliser « transmettre les compétences opérationnelles »." },
+  { re:/\bGPEC\b/, msg:"« GPEC » détecté → vérifier qu'il est utilisé uniquement comme terme historique, jamais comme cadre actuel (le terme en vigueur est GEPP)." },
+  { re:/\bgaranti(e|es|s)?\b/i, msg:"« garanti » détecté → à vérifier : ne jamais promettre une prise en charge OPCO garantie, formuler au conditionnel." },
+];
+
+// ---------------------------------------------------------------
+// SCORE ENGINE
+// ---------------------------------------------------------------
+// checks registered here get tallied into the global score.
+let scoreItems = []; // {status: 'pass'|'warn'|'fail'|'neutral'}
+
+function pillHTML(status, textPass, textWarn, textFail){
+  const map = {
+    pass:  {cls:"pill-pass",  txt: textPass || "OK"},
+    warn:  {cls:"pill-warn",  txt: textWarn || "À surveiller"},
+    fail:  {cls:"pill-fail",  txt: textFail || "À corriger"},
+    neutral:{cls:"pill-neutral", txt:"—"},
+  };
+  const m = map[status] || map.neutral;
+  return `<span class="pill ${m.cls}">${m.txt}</span>`;
+}
+
+function registerScore(status){
+  scoreItems.push(status);
+}
+
+function renderScore(){
+  const pass = scoreItems.filter(s=>s==='pass').length;
+  const warn = scoreItems.filter(s=>s==='warn').length;
+  const fail = scoreItems.filter(s=>s==='fail').length;
+  const total = scoreItems.length || 1;
+  const pct = Math.round((pass + warn*0.5) / total * 100);
+  document.getElementById('scoreNum').textContent = pct + '%';
+  document.getElementById('tallyPass').textContent = pass;
+  document.getElementById('tallyWarn').textContent = warn;
+  document.getElementById('tallyFail').textContent = fail;
+  const bar = document.getElementById('scoreBar');
+  bar.style.width = pct + '%';
+  bar.style.background = pct >= 80 ? '#3FBE7E' : pct >= 50 ? '#E0A83E' : '#E0645A';
+}
+
+// ---------------------------------------------------------------
+// HELPERS
+// ---------------------------------------------------------------
+function countWords(str){
+  return (str.trim().match(/[^\s]+/g) || []).length;
+}
+function stripAccents(str){
+  return str.normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+}
+function includesKeyword(text, kw){
+  if(!kw) return null;
+  return stripAccents(text).toLowerCase().includes(stripAccents(kw).toLowerCase());
+}
+
+// ---------------------------------------------------------------
+// POPULATE CONTENT TYPE SELECT
+// ---------------------------------------------------------------
+const ctSelect = document.getElementById('contentType');
+CONTENT_TYPES.forEach(ct=>{
+  const opt = document.createElement('option');
+  opt.value = ct.id;
+  opt.textContent = `${ct.label} — ${ct.min}-${ct.max} mots`;
+  ctSelect.appendChild(opt);
+});
+
+// ---------------------------------------------------------------
+// MANUAL CHECKLISTS
+// ---------------------------------------------------------------
+const GEO_ITEMS = [
+  "Un angle unique / une expérience réelle, pas un recyclage d'un article concurrent",
+  "Au moins un chiffre précis et daté, ou un cas client nommé (Supplay, Orange, Saur...)",
+  "Une Answer Capsule (40-60 mots) juste sous chaque grande question / H2",
+  "Auteur identifié : nom + fonction",
+  "Sources officielles citées et datées (travail-emploi.gouv.fr, Légifrance, OPCO...)",
+  "Date de publication / mise à jour visible sur la page",
+  "Section FAQ en fin d'article : 3 à 6 questions/réponses (PAA / Fan-Out)",
+  "Chaque réponse FAQ est une mini Answer Capsule autonome",
+];
+const IMG_ITEMS = [
+  "Images issues d'une banque libre et gratuite (Unsplash, Pexels, Pixabay...), licence vérifiée",
+  "Fichiers renommés avec le mot-clé, minuscules, tirets (jamais IMG_xxxx.jpg)",
+  "Attribut alt renseigné sur chaque image",
+  "Images compressées (< ~150 Ko), format léger (WebP/JPEG), bien dimensionnées",
+  "Au moins 1 image tous les ~300-400 mots, dont un visuel informatif (schéma, tableau, capture)",
+  "Une image « à la une » soignée pour les partages",
+];
+const LINKS_ITEMS = [
+  "Ancres descriptives partout (jamais « cliquez ici » / « en savoir plus »)",
+  "Un lien remontant vers la page pilière du cocon",
+  "Un lien vers la page money si l'article est MOFU/BOFU",
+  "Aucune page orpheline : l'article reçoit au moins un lien entrant prévu",
+  "Liens externes uniquement vers des sources d'autorité, jamais vers un concurrent",
+];
+
+function buildManualList(containerId, items){
+  const ul = document.getElementById(containerId);
+  items.forEach((txt, i)=>{
+    const li = document.createElement('li');
+    const id = containerId + '_' + i;
+    li.innerHTML = `<input type="checkbox" id="${id}"><label for="${id}">${txt}</label>`;
+    ul.appendChild(li);
+  });
+}
+buildManualList('geoList', GEO_ITEMS);
+buildManualList('imgList', IMG_ITEMS);
+buildManualList('linksList', LINKS_ITEMS);
+
+// re-render score whenever a manual checkbox is toggled
+document.querySelectorAll('.manual-list input[type=checkbox]').forEach(cb=>{
+  cb.addEventListener('change', runAll);
+});
+
+// ---------------------------------------------------------------
+// MAIN EVALUATION
+// ---------------------------------------------------------------
+function runAll(){
+  scoreItems = [];
+
+  const keyword = document.getElementById('keyword').value.trim();
+  const title = document.getElementById('title').value;
+  const metaDesc = document.getElementById('metaDesc').value;
+  const slug = document.getElementById('slug').value.trim();
+  const h1 = document.getElementById('h1').value;
+  const body = document.getElementById('body').value;
+  const ct = CONTENT_TYPES.find(c=>c.id === ctSelect.value) || CONTENT_TYPES[1];
+
+  // ---- TITLE ----
+  const tLen = title.length;
+  document.getElementById('titleCount').textContent = tLen + ' caractères (cible 50-60)';
+  let tStatus;
+  if(tLen === 0) tStatus = 'neutral';
+  else if(tLen >= 50 && tLen <= 60) tStatus = 'pass';
+  else if(tLen >= 45 && tLen <= 65) tStatus = 'warn';
+  else tStatus = 'fail';
+  let tKwOk = keyword ? includesKeyword(title, keyword) : null;
+  document.getElementById('titlePill').innerHTML =
+    (tLen>0 ? pillHTML(tStatus, 'Longueur OK', 'Limite', 'Trop long/court') : '') +
+    (keyword ? ' ' + pillHTML(tKwOk ? 'pass':'fail', 'Mot-clé présent', '', 'Mot-clé absent') : '');
+  if(tLen>0) registerScore(tStatus);
+  if(keyword) registerScore(tKwOk ? 'pass':'fail');
+
+  // ---- META DESCRIPTION ----
+  const mLen = metaDesc.length;
+  document.getElementById('metaCount').textContent = mLen + ' caractères (cible 140-160)';
+  let mStatus;
+  if(mLen === 0) mStatus = 'neutral';
+  else if(mLen >= 140 && mLen <= 160) mStatus = 'pass';
+  else if(mLen >= 120 && mLen <= 170) mStatus = 'warn';
+  else mStatus = 'fail';
+  let mKwOk = keyword ? includesKeyword(metaDesc, keyword) : null;
+  document.getElementById('metaPill').innerHTML =
+    (mLen>0 ? pillHTML(mStatus, 'Longueur OK', 'Limite', 'Trop long/court') : '') +
+    (keyword ? ' ' + pillHTML(mKwOk ? 'pass':'fail', 'Mot-clé présent', '', 'Mot-clé absent') : '');
+  if(mLen>0) registerScore(mStatus);
+  if(keyword) registerScore(mKwOk ? 'pass':'fail');
+
+  // ---- SLUG ----
+  let slugPill = '';
+  if(slug){
+    const isLower = slug === slug.toLowerCase();
+    const noAccents = slug === stripAccents(slug);
+    const noUnderscoreSpace = !/[_\s]/.test(slug);
+    const wordCount = slug.split('/').pop().split('-').filter(Boolean).length;
+    const wcOk = wordCount >= 2 && wordCount <= 5;
+    const slugKwOk = keyword ? includesKeyword(slug, keyword) : null;
+    const allFormatOk = isLower && noAccents && noUnderscoreSpace;
+    slugPill = pillHTML(allFormatOk ? 'pass':'fail', 'Format OK', '', 'Format à corriger') + ' ' +
+               pillHTML(wcOk ? 'pass':'warn', wordCount+' mots', wordCount+' mots', wordCount+' mots');
+    if(keyword) slugPill += ' ' + pillHTML(slugKwOk?'pass':'fail','Mot-clé présent','','Mot-clé absent');
+    registerScore(allFormatOk ? 'pass':'fail');
+    registerScore(wcOk ? 'pass':'warn');
+    if(keyword) registerScore(slugKwOk?'pass':'fail');
+  }
+  document.getElementById('slugPill').innerHTML = slugPill;
+
+  // ---- H1 ----
+  const hLen = h1.length;
+  document.getElementById('h1Count').textContent = hLen + ' caractères (cible 40-70)';
+  let hStatus;
+  if(hLen===0) hStatus='neutral';
+  else if(hLen>=40 && hLen<=70) hStatus='pass';
+  else if(hLen>=32 && hLen<=80) hStatus='warn';
+  else hStatus='fail';
+  let hKwOk = keyword ? includesKeyword(h1, keyword) : null;
+  let sameAsTitle = title && h1 && title.trim().toLowerCase() === h1.trim().toLowerCase();
+  let h1Pill = (hLen>0 ? pillHTML(hStatus,'Longueur OK','Limite','Trop long/court') : '');
+  if(keyword) h1Pill += ' ' + pillHTML(hKwOk?'pass':'fail','Mot-clé présent','','Mot-clé absent');
+  if(title && h1) h1Pill += ' ' + pillHTML(sameAsTitle?'fail':'pass','Différent du title','','Identique au title');
+  document.getElementById('h1Pill').innerHTML = h1Pill;
+  if(hLen>0) registerScore(hStatus);
+  if(keyword) registerScore(hKwOk?'pass':'fail');
+  if(title && h1) registerScore(sameAsTitle?'fail':'pass');
+
+  // ---- BODY ----
+  const words = countWords(body);
+  const h2Matches = body.match(/^##\s+.+$/gm) || [];
+  const h2Count = h2Matches.length;
+  // paragraphs: split on blank lines, ignore heading-only lines
+  const paraBlocks = body.split(/\n\s*\n/).map(b=>b.trim()).filter(b=>b && !/^#{1,3}\s/.test(b));
+  const bodyTextOnly = paraBlocks.join(' ');
+  const sentences = (bodyTextOnly.match(/[^.!?]+[.!?]+/g) || []).map(s=>s.trim()).filter(Boolean);
+
+  document.getElementById('statWords').textContent = words;
+  document.getElementById('statH2').textContent = h2Count;
+  document.getElementById('statPara').textContent = paraBlocks.length;
+  document.getElementById('statSent').textContent = sentences.length;
+
+  const bodyChecks = [];
+
+  // word count vs target
+  let wcStatus = words===0 ? 'neutral' : (words>=ct.min && words<=ct.max) ? 'pass' : (words>=ct.min*0.8 && words<=ct.max*1.2) ? 'warn' : 'fail';
+  bodyChecks.push([wcStatus, `Longueur : ${words} mots (cible ${ct.min}-${ct.max} pour « ${ct.label.split(' (')[0]} »)`]);
+  if(words>0) registerScore(wcStatus);
+
+  // keyword in first 100 words
+  if(keyword && words>0){
+    const first100 = body.trim().split(/\s+/).slice(0,100).join(' ');
+    const kwFirst = includesKeyword(first100, keyword);
+    bodyChecks.push([kwFirst?'pass':'fail', 'Mot-clé principal présent dans les 100 premiers mots']);
+    registerScore(kwFirst?'pass':'fail');
+  }
+
+  // H2 presence + spacing
+  if(words>0){
+    const h2Status = h2Count>0 ? 'pass' : 'fail';
+    bodyChecks.push([h2Status, `${h2Count} sous-titre(s) H2 détecté(s) (marqués avec "## ")`]);
+    registerScore(h2Status);
+    if(h2Count>0){
+      const avgSpacing = Math.round(words/h2Count);
+      const spacingStatus = avgSpacing<=350 ? 'pass' : avgSpacing<=450 ? 'warn' : 'fail';
+      bodyChecks.push([spacingStatus, `Espacement moyen entre H2 : ~${avgSpacing} mots (cible 200-300)`]);
+      registerScore(spacingStatus);
+      const kwInH2 = keyword ? h2Matches.some(h=>includesKeyword(h,keyword)) : null;
+      if(keyword){
+        bodyChecks.push([kwInH2?'pass':'warn', 'Mot-clé (ou variante) présent dans au moins un H2']);
+        registerScore(kwInH2?'pass':'warn');
+      }
+    }
+  }
+
+  // paragraph length (sentences per paragraph)
+  if(paraBlocks.length>0){
+    const longParas = paraBlocks.filter(p=>{
+      const s = (p.match(/[^.!?]+[.!?]+/g) || []);
+      return s.length > 4;
+    });
+    const paraStatus = longParas.length===0 ? 'pass' : longParas.length<=2 ? 'warn' : 'fail';
+    bodyChecks.push([paraStatus, `${longParas.length} paragraphe(s) trop long(s) (>4 phrases) sur ${paraBlocks.length}`]);
+    registerScore(paraStatus);
+  }
+
+  // sentence length
+  if(sentences.length>0){
+    const longSentences = sentences.filter(s=>countWords(s)>25);
+    const ratio = longSentences.length/sentences.length;
+    const sentStatus = ratio<=0.1 ? 'pass' : ratio<=0.25 ? 'warn' : 'fail';
+    bodyChecks.push([sentStatus, `${longSentences.length} phrase(s) de plus de 25 mots sur ${sentences.length} (${Math.round(ratio*100)}%)`]);
+    registerScore(sentStatus);
+  }
+
+  // lists presence
+  if(words>0){
+    const hasList = /^[\s]*[-*•]\s+/m.test(body) || /^[\s]*\d+[.)]\s+/m.test(body);
+    bodyChecks.push([hasList?'pass':'warn', hasList ? 'Au moins une liste à puces/numérotée détectée' : 'Aucune liste détectée — vérifier si une énumération de 3+ éléments mérite une liste']);
+    registerScore(hasList?'pass':'warn');
+  }
+
+  const bcUl = document.getElementById('bodyChecks');
+  bcUl.innerHTML = '';
+  bodyChecks.forEach(([status,label])=>{
+    const li = document.createElement('li');
+    li.innerHTML = `${pillHTML(status)}<span>${label}</span>`;
+    bcUl.appendChild(li);
+  });
+
+  // ---- VOCAB / COMPLIANCE SCAN ----
+  const vocabBox = document.getElementById('vocabBox');
+  const vocabList = document.getElementById('vocabList');
+  vocabList.innerHTML = '';
+  const fullText = title + ' ' + metaDesc + ' ' + h1 + ' ' + body;
+  const hits = [];
+  VOCAB_RULES.forEach(rule=>{
+    if(rule.re.test(fullText)) hits.push(rule.msg);
+  });
+  if(hits.length===0){
+    vocabBox.classList.add('ok');
+    vocabBox.querySelector('p').textContent = 'Vocabulaire & conformité — rien détecté';
+    registerScore('pass');
+  } else {
+    vocabBox.classList.remove('ok');
+    vocabBox.querySelector('p').textContent = `Vocabulaire & conformité — ${hits.length} point(s) à vérifier`;
+    hits.forEach(h=>{
+      const li = document.createElement('li');
+      li.textContent = h;
+      vocabList.appendChild(li);
+    });
+    registerScore('warn');
+  }
+
+  // ---- LINKS ----
+  const li1 = parseInt(document.getElementById('linksInternal').value, 10);
+  const li2 = parseInt(document.getElementById('linksExternal').value, 10);
+  if(!isNaN(li1)){
+    const st = (li1>=3 && li1<=6) ? 'pass' : (li1>0) ? 'warn' : 'fail';
+    document.getElementById('linksInternalPill').innerHTML = pillHTML(st, 'Dans la cible', 'Hors cible idéale', 'Insuffisant');
+    registerScore(st);
+  } else {
+    document.getElementById('linksInternalPill').innerHTML = '';
+  }
+  if(!isNaN(li2)){
+    const st = (li2>=1 && li2<=3) ? 'pass' : (li2>3) ? 'warn' : 'fail';
+    document.getElementById('linksExternalPill').innerHTML = pillHTML(st, 'Dans la cible', 'Trop de liens', "Aucun lien d'autorité");
+    registerScore(st);
+  } else {
+    document.getElementById('linksExternalPill').innerHTML = '';
+  }
+
+  // ---- MANUAL CHECKBOXES ----
+  document.querySelectorAll('.manual-list input[type=checkbox]').forEach(cb=>{
+    registerScore(cb.checked ? 'pass' : 'fail');
+  });
+
+  renderScore();
+}
+
+// ---------------------------------------------------------------
+// EVENTS
+// ---------------------------------------------------------------
+['keyword','title','metaDesc','slug','h1','body','linksInternal','linksExternal'].forEach(id=>{
+  document.getElementById(id).addEventListener('input', runAll);
+});
+ctSelect.addEventListener('change', runAll);
+
+document.getElementById('resetBtn').addEventListener('click', ()=>{
+  ['keyword','title','metaDesc','slug','h1','body','linksInternal','linksExternal'].forEach(id=>{
+    document.getElementById(id).value = '';
+  });
+  document.querySelectorAll('.manual-list input[type=checkbox]').forEach(cb=> cb.checked=false);
+  ctSelect.selectedIndex = 1;
+  runAll();
+});
+
+// init
+ctSelect.selectedIndex = 1;
+runAll();
+</script>
+</body>
+</html>
